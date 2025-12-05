@@ -709,8 +709,9 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store1 = new Store<string>(dbPath, "collection1", _loggerFactory);
-            using var store2 = new Store<int>(dbPath, "collection2", _loggerFactory);
+            using var db = new LiteDatabase(dbPath);
+            using var store1 = new Store<string>(db, "collection1", _loggerFactory);
+            using var store2 = new Store<int>(db, "collection2", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
