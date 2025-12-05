@@ -45,20 +45,12 @@ namespace Baubit.Caching.LiteDB
             : base(minCap, maxCap, loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<Store<TValue>>();
-            var mapper = new BsonMapper();
-            mapper.EmptyStringToNull = false;
-            
-            // Register custom DateTime serializer that preserves UTC
-            mapper.RegisterType<DateTime>(
-                serialize: (dt) => new BsonValue(dt.ToUniversalTime().Ticks),
-                deserialize: (bson) => new DateTime(bson.AsInt64, DateTimeKind.Utc)
-            );
-            
+
             _database = new LiteDatabase(new ConnectionString
             {
                 Filename = databasePath,
                 Upgrade = true
-            }, mapper);
+            });
             _ownsDatabase = true;
             _collection = _database.GetCollection<Entry<TValue>>(collectionName);
             _collection.EnsureIndex(x => x.Id, unique: true);

@@ -1,5 +1,5 @@
-using Baubit.Caching;
 using System;
+using LiteDB;
 
 namespace Baubit.Caching.LiteDB
 {
@@ -17,7 +17,26 @@ namespace Baubit.Caching.LiteDB
         /// <summary>
         /// Gets or sets the UTC timestamp when this entry was created.
         /// </summary>
-        public DateTime CreatedOnUTC { get; set; } = DateTime.UtcNow;
+        [BsonIgnore]
+        public DateTime CreatedOnUTC
+        {
+            get => new DateTime(CreatedOnUtcTicks, DateTimeKind.Utc);
+            set
+            {
+                DateTime utc;
+                switch (value.Kind)
+                {
+                    case DateTimeKind.Utc: utc = value; break;
+                    case DateTimeKind.Local: utc = value.ToUniversalTime(); break;
+                    case DateTimeKind.Unspecified: utc = DateTime.SpecifyKind(value, DateTimeKind.Utc); break;
+                    default: utc = value; break;
+                }
+                CreatedOnUtcTicks = utc.Ticks;
+            }
+        }
+
+        [BsonField(nameof(CreatedOnUTC))]
+        public long CreatedOnUtcTicks { get; set; } = DateTime.UtcNow.Ticks;
 
         /// <summary>
         /// Gets or sets the value stored in this entry.
@@ -29,6 +48,10 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         public Entry()
         {
+            // Ensure CreatedOnUTC has a sensible default even when LiteDB
+            // instantiates via parameterless ctor
+            if (CreatedOnUtcTicks == 0)
+                CreatedOnUTC = DateTime.UtcNow;
         }
 
         /// <summary>
@@ -40,6 +63,7 @@ namespace Baubit.Caching.LiteDB
         {
             Id = id;
             Value = value;
+            CreatedOnUTC = DateTime.UtcNow;
         }
     }
 }
