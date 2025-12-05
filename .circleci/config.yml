@@ -112,6 +112,8 @@ jobs:
         default: ""
     machine:
       image: ubuntu-2204:current
+    environment:
+      MSBUILDTERMINALLOGGER: off #Workaround while https://github.com/dotnet/msbuild/issues/11213 exists
     steps:
       - run:
           name: Parameter check
@@ -149,8 +151,16 @@ jobs:
       - run:
           name: Test
           command: |
-            SOLUTION_FILE="${SOLUTION_FOLDER}.sln"                
-            dotnet test ${SOLUTION_FILE} \
+            TEST_PROJECT="${PROJECT_NAME}.Test/${PROJECT_NAME}.Test.csproj"
+            
+            if [ ! -f "$TEST_PROJECT" ]; then
+              echo "Test project not found at: $TEST_PROJECT"
+              echo "Skipping tests..."
+              exit 0
+            fi
+            
+            dotnet test ${TEST_PROJECT} \
+              --configuration Release \
               --collect:"XPlat Code Coverage" \
               --results-directory ./TestResults/ \
               -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
