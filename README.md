@@ -1,6 +1,6 @@
 # Baubit.Caching.LiteDB
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/TpM4QUH8Djox7cjDaNpup5/BwRtQ3wVYEJLRxGmwPwmZW/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/TpM4QUH8Djox7cjDaNpup5/BwRtQ3wVYEJLRxGmwPwmZW/tree/master)
+[![CircleCI](https://dl.circleci.com/status-badge/img/circleci/TpM4QUH8Djox7cjDaNpup5/2zTgJzKbD2m3nXCf5LKvqS/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/TpM4QUH8Djox7cjDaNpup5/2zTgJzKbD2m3nXCf5LKvqS/tree/master)
 [![codecov](https://codecov.io/gh/pnagoorkar/Baubit.Caching.LiteDB/branch/master/graph/badge.svg)](https://codecov.io/gh/pnagoorkar/Baubit.Caching.LiteDB)<br/>
 [![NuGet](https://img.shields.io/nuget/v/Baubit.Caching.LiteDB.svg)](https://www.nuget.org/packages/Baubit.Caching.LiteDB/)
 ![.NET Standard 2.0](https://img.shields.io/badge/.NET%20Standard-2.0-512BD4?logo=dotnet&logoColor=white)<br/>
@@ -93,14 +93,6 @@ store.Remove(id, out var removed);
 // Count
 store.GetCount(out var count);
 ```
-
-## Features
-
-- Persistent file-based storage via LiteDB
-- Thread-safe operations
-- Capacity management (min/max/target)
-- GuidV7 time-ordered identifier support
-- Head/tail tracking for ordered iteration
 
 ## License
 
