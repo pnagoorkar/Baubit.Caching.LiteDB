@@ -14,7 +14,7 @@
     <SignAssembly>$(SignAssembly)</SignAssembly>
     <AssemblyOriginatorKeyFile>$(KeyFilePath)</AssemblyOriginatorKeyFile>
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
-    <Description>LiteDB-backed L2 store (persietent) implementation for Baubit.Caching.</Description>
+    <Description>LiteDB-backed L2 store (persistent) implementation for Baubit.Caching.</Description>
     <PackageTags>cache;litedb;l2-store;persistent-cache;ordered-cache;baubit;netstandard;file-storage</PackageTags>
   </PropertyGroup>
 
