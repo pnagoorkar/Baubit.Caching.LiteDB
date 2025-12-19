@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Baubit.Caching" Version="2025.49.1" />
+    <PackageReference Include="Baubit.Caching" Version="2025.51.1" />
     <PackageReference Include="LiteDB" Version="5.0.21" />
   </ItemGroup>
 
