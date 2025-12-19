@@ -10,7 +10,7 @@ namespace Baubit.Caching.LiteDB
     /// Provides persistent, file-based storage as an L2 backing store.
     /// </summary>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public class Store<TValue> : AStore<TValue>
+    public class Store<TValue> : Baubit.Caching.Store<TValue>
     {
         private readonly LiteDatabase _database;
         private readonly ILiteCollection<Entry<TValue>> _collection;
