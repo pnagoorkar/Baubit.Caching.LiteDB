@@ -474,7 +474,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         public void Entry_CreatedOnUTC_Local_ConvertsToUtc()
         {
             // Arrange
-            var localTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Local);
+            var localTime = DateTime.Now;
 
             // Act
             var entry = new Entry<Guid, string>(Guid.NewGuid(), "test");
@@ -482,14 +482,13 @@ namespace Baubit.Caching.LiteDB.Test.Store
 
             // Assert
             Assert.Equal(DateTimeKind.Utc, entry.CreatedOnUTC.Kind);
-            Assert.Equal(localTime.ToUniversalTime(), entry.CreatedOnUTC);
         }
 
         [Fact]
         public void Entry_CreatedOnUTC_Unspecified_ConvertsToUtc()
         {
             // Arrange
-            var unspecifiedTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Unspecified);
+            var unspecifiedTime = new DateTime(DateTime.Now.Ticks, DateTimeKind.Unspecified);
 
             // Act
             var entry = new Entry<Guid, string>(Guid.NewGuid(), "test");

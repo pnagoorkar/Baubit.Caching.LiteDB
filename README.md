@@ -33,14 +33,16 @@ Using `long` as ID type provides significant performance benefits over `Guid`:
 
 | Operation | Long (ops/sec) | Guid (ops/sec) | Improvement |
 |-----------|----------------|----------------|-------------|
-| Read      | 50K-67K        | ~80K           | Similar     |
-| Write     | 15K-18K        | ~13K           | 15-38% faster |
-| Memory    | 8 bytes        | 16 bytes       | 50% less    |
+| Read      | 50K-67K        | ~80K           | Guid 20% faster |
+| Write     | 15K-18K        | ~13K           | Long 15-38% faster |
+| Memory    | 8 bytes        | 16 bytes       | Long 50% less    |
 
-**Why long is faster:**
+**Why long is better for most use cases:**
 - 50% smaller footprint (8 bytes vs 16 bytes) = better cache locality
+- 15-38% faster write operations (critical for caching)
 - Simpler comparison and hashing operations
 - Sequential IDs improve database index performance
+- Guid only faster on reads (less critical for caching)
 
 See [Baubit.Caching.LiteDB.Benchmark/Results.md](Baubit.Caching.LiteDB.Benchmark/Results.md) for detailed benchmarks.
 
