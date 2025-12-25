@@ -10,7 +10,7 @@
 
 **DI Extension**: [Baubit.Caching.LiteDB.DI](https://github.com/pnagoorkar/Baubit.Caching.LiteDB.DI)
 
-LiteDB-backed L2 store implementation for [Baubit.Caching](https://github.com/pnagoorkar/Baubit.Caching).
+LiteDB-backed L2 store implementation for [Baubit.Caching](https://github.com/pnagoorkar/Baubit.Caching) with support for custom ID types.
 
 ## Installation
 
@@ -18,7 +18,48 @@ LiteDB-backed L2 store implementation for [Baubit.Caching](https://github.com/pn
 dotnet add package Baubit.Caching.LiteDB
 ```
 
+## Features
+
+- **Generic ID Support**: Use `long`, `int`, `Guid`, or any value type implementing `IComparable<TId>` and `IEquatable<TId>`
+- **Persistent Storage**: File-based LiteDB storage for durable caching
+- **Automatic ID Generation**: Built-in GuidV7 generation for `Store<TValue>` (backward compatible)
+- **Thread-Safe**: All public APIs are thread-safe
+- **Capacity Management**: Support for bounded and unbounded stores
+
 ## Usage
+
+### Store with Custom ID Types
+
+```csharp
+using Baubit.Caching.LiteDB;
+using Microsoft.Extensions.Logging;
+
+// Store with long IDs
+var storeLong = new Store<long, string>(
+    "cache.db",
+    "myCollection",
+    loggerFactory);
+
+storeLong.Add(1L, "value", out var entry);
+storeLong.GetValueOrDefault(1L, out var value);
+
+// Store with int IDs
+var storeInt = new Store<int, string>(
+    "cache.db",
+    "intCollection",
+    loggerFactory);
+
+storeInt.Add(42, "value", out var entry);
+
+// Store with Guid IDs and automatic generation
+var storeGuid = new Store<string>(
+    "cache.db",
+    "guidCollection",
+    loggerFactory);
+
+// IDs generated automatically using GuidV7
+storeGuid.Add(Guid.NewGuid(), "value", out var entry);
+```
 
 ### Creating the Store
 
@@ -26,18 +67,24 @@ dotnet add package Baubit.Caching.LiteDB
 using Baubit.Caching.LiteDB;
 using Microsoft.Extensions.Logging;
 
-// Create an uncapped store
+// Uncapped store with automatic Guid generation
 var store = new Store<string>(
-    "cache.db",           // Database file path
-    "myCollection",       // Collection name
+    "cache.db",
+    "myCollection",
     loggerFactory);
 
-// Create a capped store
+// Capped store
 var cappedStore = new Store<string>(
     "cache.db",
     "myCollection",
-    minCap: 100,          // Minimum capacity
-    maxCap: 1000,         // Maximum capacity
+    minCap: 100,
+    maxCap: 1000,
+    loggerFactory);
+
+// Store with custom ID type (no automatic generation)
+var longStore = new Store<long, string>(
+    "cache.db",
+    "longCollection",
     loggerFactory);
 
 // Use with existing LiteDatabase instance
@@ -45,56 +92,42 @@ using var db = new LiteDatabase("cache.db");
 var sharedStore = new Store<string>(db, "myCollection", loggerFactory);
 ```
 
-### Creating IOrderedCache with LiteDB L2 Store
-
-```csharp
-using Baubit.Caching;
-using Baubit.Caching.InMemory;
-using Baubit.Caching.LiteDB;
-using Microsoft.Extensions.Logging;
-
-var config = new Configuration { EvictAfterEveryX = 100 };
-var metadata = new Metadata { Configuration = config };
-
-// L1: In-memory store (bounded, fast)
-var l1Store = new Baubit.Caching.InMemory.Store<string>(100, 1000, loggerFactory);
-
-// L2: LiteDB store (unbounded, persistent)
-var l2Store = new Baubit.Caching.LiteDB.Store<string>("cache.db", "entries", loggerFactory);
-
-using var cache = new OrderedCache<string>(config, l1Store, l2Store, metadata, loggerFactory);
-
-// Add entries
-cache.Add("value", out var entry);
-
-// Read entries
-cache.GetEntryOrDefault(entry.Id, out var retrieved);
-
-// Async enumeration
-await foreach (var item in cache)
-{
-    Console.WriteLine(item.Value);
-}
-```
-
 ### Basic Store Operations
 
 ```csharp
-// Add
-store.Add(Guid.NewGuid(), "value", out var entry);
+// Generic store - explicit ID required
+var storeLong = new Store<long, string>("cache.db", "col", loggerFactory);
+storeLong.Add(1L, "value", out var entry);
+storeLong.GetValueOrDefault(1L, out var value);
+storeLong.Update(1L, "new value");
+storeLong.Remove(1L, out var removed);
 
-// Get
-store.GetValueOrDefault(id, out var value);
-store.GetEntryOrDefault(id, out var entry);
+// Guid store - automatic ID generation
+var storeGuid = new Store<string>("cache.db", "col", loggerFactory);
+storeGuid.Add(Guid.NewGuid(), "value", out var entry);
+// Or let it generate:
+// var idGen = Baubit.Identity.IdentityGenerator.CreateNew();
+// var store = new Store<string>("cache.db", "col", idGen, loggerFactory);
 
-// Update
-store.Update(id, "new value");
-
-// Remove
-store.Remove(id, out var removed);
-
-// Count
+// Count entries
 store.GetCount(out var count);
+
+// Head and Tail IDs
+var headId = store.HeadId;  // Smallest ID
+var tailId = store.TailId;  // Largest ID
+```
+
+## Performance
+
+Using numeric ID types (`long`, `int`) provides performance benefits over `Guid`:
+- Smaller memory footprint (8 bytes for `long` vs 16 bytes for `Guid`)
+- Faster comparisons and indexing
+- Better cache locality
+
+Run benchmarks locally to see performance characteristics for your workload:
+
+```bash
+dotnet run -c Release --project Baubit.Caching.LiteDB.Benchmark
 ```
 
 ## License
