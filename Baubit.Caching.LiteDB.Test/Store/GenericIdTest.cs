@@ -1,4 +1,3 @@
-using Baubit.Caching.LiteDB;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
