@@ -1,4 +1,3 @@
-using Baubit.Caching;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 using System;
@@ -11,25 +10,14 @@ namespace Baubit.Caching.LiteDB
     /// </summary>
     /// <typeparam name="TId">The type of the unique identifier. Must be a value type that implements IComparable and IEquatable.</typeparam>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
+    public abstract class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
         private readonly LiteDatabase _database;
         private readonly ILiteCollection<Entry<TId, TValue>> _collection;
         private readonly ILogger<Store<TId, TValue>> _logger;
         private readonly bool _ownsDatabase;
-        private TId? _headId;
-        private TId? _tailId;
-
-        /// <summary>
-        /// Gets the identifier of the first (head/oldest) entry in the store.
-        /// </summary>
-        public TId? HeadId => _headId;
-
-        /// <summary>
-        /// Gets the identifier of the last (tail/newest) entry in the store.
-        /// </summary>
-        public TId? TailId => _tailId;
+        private TId? lastGeneratedId;
 
         /// <summary>
         /// Creates a new LiteDB-backed store with the specified database path.
@@ -112,8 +100,6 @@ namespace Baubit.Caching.LiteDB
         {
             var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
             var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
-            _headId = head?.Id;
-            _tailId = tail?.Id;
         }
 
         /// <inheritdoc />
@@ -135,8 +121,6 @@ namespace Baubit.Caching.LiteDB
                 // Duplicate key - return false
                 return false;
             }
-            
-            UpdateHeadTailOnAdd(entry.Id);
             return true;
         }
 
@@ -150,44 +134,16 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Add(TValue value, out IEntry<TId, TValue> entry)
         {
-            throw new NotSupportedException(
-                $"Automatic ID generation is not supported for Store<{typeof(TId).Name}, {typeof(TValue).Name}>. " +
-                "Use Add(TId id, TValue value, out IEntry<TId, TValue> entry) instead to provide an explicit ID.");
+            var nextId = GenerateNextId(lastGeneratedId);
+            if (nextId == null)
+            {
+                entry = default;
+                return false;
+            }
+            lastGeneratedId = nextId;
+            return Add(nextId.Value, value, out entry);
         }
-
-        private void UpdateHeadTailOnAdd(TId id)
-        {
-            if (!_headId.HasValue || id.CompareTo(_headId.Value) < 0)
-            {
-                _headId = id;
-            }
-            if (!_tailId.HasValue || id.CompareTo(_tailId.Value) > 0)
-            {
-                _tailId = id;
-            }
-        }
-
-        private void UpdateHeadTailOnRemove(TId id)
-        {
-            var count = _collection.Count();
-            if (count == 0)
-            {
-                _headId = null;
-                _tailId = null;
-                return;
-            }
-
-            if (_headId.HasValue && id.CompareTo(_headId.Value) == 0)
-            {
-                var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
-                _headId = head != null ? (TId?)head.Id : null;
-            }
-            if (_tailId.HasValue && id.CompareTo(_tailId.Value) == 0)
-            {
-                var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
-                _tailId = tail != null ? (TId?)tail.Id : null;
-            }
-        }
+        protected abstract TId? GenerateNextId(TId? lastGeneratedId);
 
         /// <inheritdoc />
         public override bool GetCount(out long count)
@@ -229,7 +185,6 @@ namespace Baubit.Caching.LiteDB
             }
 
             _collection.Delete(new BsonValue(id));
-            UpdateHeadTailOnRemove(id);
             entry = found;
             return true;
         }
@@ -257,8 +212,6 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         protected override void DisposeInternal()
         {
-            _headId = null;
-            _tailId = null;
             if (_ownsDatabase)
             {
                 _database?.Dispose();
@@ -273,7 +226,7 @@ namespace Baubit.Caching.LiteDB
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
     public class Store<TValue> : Store<Guid, TValue>
     {
-        private readonly Baubit.Identity.IIdentityGenerator _identityGenerator;
+        private readonly Baubit.Identity.IIdentityGenerator identityGenerator;
 
         /// <summary>
         /// Creates a new LiteDB-backed store with the specified database path.
@@ -292,8 +245,7 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(databasePath, collectionName, minCap, maxCap, loggerFactory)
         {
-            _identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
-            InitializeIdentityGenerator();
+            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -309,8 +261,7 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(databasePath, collectionName, loggerFactory)
         {
-            _identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
-            InitializeIdentityGenerator();
+            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -330,8 +281,7 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(database, collectionName, minCap, maxCap, loggerFactory)
         {
-            _identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
-            InitializeIdentityGenerator();
+            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -347,8 +297,7 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(database, collectionName, loggerFactory)
         {
-            _identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
-            InitializeIdentityGenerator();
+            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         // Backward-compatible constructors without identityGenerator (creates default)
@@ -416,28 +365,17 @@ namespace Baubit.Caching.LiteDB
         {
         }
 
-        private void InitializeIdentityGenerator()
+        /// <inheritdoc/>
+        protected override Guid? GenerateNextId(Guid? lastGeneratedId)
         {
-            // Initialize the identity generator from the last (tail) ID if it exists
-            if (TailId.HasValue)
+            if (identityGenerator == null) return null;
+            // Initialize from last generated ID if available to ensure monotonicity
+            if (lastGeneratedId.HasValue)
             {
-                try
-                {
-                    _identityGenerator.InitializeFrom(TailId.Value);
-                }
-                catch (InvalidOperationException)
-                {
-                    // TailId is not a valid GUIDv7, which is OK - just don't initialize
-                    // This can happen when the database contains GUIDs created by other means
-                }
+                identityGenerator.InitializeFrom(lastGeneratedId.Value);
             }
-        }
 
-        /// <inheritdoc />
-        public override bool Add(TValue value, out IEntry<Guid, TValue> entry)
-        {
-            var id = _identityGenerator.GetNext();
-            return Add(id, value, out entry);
+            return identityGenerator.GetNext();
         }
     }
 }
