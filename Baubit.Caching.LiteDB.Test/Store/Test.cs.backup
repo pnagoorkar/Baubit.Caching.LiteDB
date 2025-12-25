@@ -85,6 +85,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
 
             // Assert
             Assert.True(store.Uncapped);
+            Assert.Null(store.HeadId);
+            Assert.Null(store.TailId);
         }
 
         [Fact]
@@ -391,6 +393,155 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void Store_HeadId_ReturnsMinimumGuid()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var id3 = Guid.NewGuid();
+            var minId = new[] { id1, id2, id3 }.Min();
+
+            // Act
+            store.Add(id1, "first", out _);
+            store.Add(id2, "second", out _);
+            store.Add(id3, "third", out _);
+
+            // Assert
+            Assert.Equal(minId, store.HeadId);
+        }
+
+        [Fact]
+        public void Store_TailId_ReturnsMaximumGuid()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var id3 = Guid.NewGuid();
+            var maxId = new[] { id1, id2, id3 }.Max();
+
+            // Act
+            store.Add(id1, "first", out _);
+            store.Add(id2, "second", out _);
+            store.Add(id3, "third", out _);
+
+            // Assert
+            Assert.Equal(maxId, store.TailId);
+        }
+
+        [Fact]
+        public void Store_HeadId_EmptyStore_ReturnsNull()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+
+            // Act & Assert
+            Assert.Null(store.HeadId);
+        }
+
+        [Fact]
+        public void Store_TailId_EmptyStore_ReturnsNull()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+
+            // Act & Assert
+            Assert.Null(store.TailId);
+        }
+
+        [Fact]
+        public void Store_HeadId_UpdatesAfterRemoveHead()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var ids = new[] { id1, id2 }.OrderBy(x => x).ToArray();
+            var minId = ids[0];
+            var secondMinId = ids[1];
+
+            store.Add(id1, "first", out _);
+            store.Add(id2, "second", out _);
+
+            // Act
+            store.Remove(minId, out _);
+
+            // Assert
+            Assert.Equal(secondMinId, store.HeadId);
+        }
+
+        [Fact]
+        public void Store_TailId_UpdatesAfterRemoveTail()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var ids = new[] { id1, id2 }.OrderByDescending(x => x).ToArray();
+            var maxId = ids[0];
+            var secondMaxId = ids[1];
+
+            store.Add(id1, "first", out _);
+            store.Add(id2, "second", out _);
+
+            // Act
+            store.Remove(maxId, out _);
+
+            // Assert
+            Assert.Equal(secondMaxId, store.TailId);
+        }
+
+        [Fact]
+        public void Store_HeadTail_UpdateToNullAfterRemoveAll()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id = Guid.NewGuid();
+            store.Add(id, "test", out _);
+
+            // Act
+            store.Remove(id, out _);
+
+            // Assert
+            Assert.Null(store.HeadId);
+            Assert.Null(store.TailId);
+        }
+
+        [Fact]
+        public void Store_HeadTail_UnchangedAfterRemoveMiddle()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+            var id3 = Guid.NewGuid();
+            var ids = new[] { id1, id2, id3 }.OrderBy(x => x).ToArray();
+            var minId = ids[0];
+            var middleId = ids[1];
+            var maxId = ids[2];
+
+            store.Add(id1, "first", out _);
+            store.Add(id2, "second", out _);
+            store.Add(id3, "third", out _);
+
+            // Act
+            store.Remove(middleId, out _);
+
+            // Assert - Head and tail should remain unchanged
+            Assert.Equal(minId, store.HeadId);
+            Assert.Equal(maxId, store.TailId);
+        }
+
+        [Fact]
         public void Store_AddCapacity_IncreasesCapacity()
         {
             // Arrange
@@ -508,6 +659,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
             var id1 = Guid.NewGuid();
             var id2 = Guid.NewGuid();
             var id3 = Guid.NewGuid();
+            var minId = new[] { id1, id2, id3 }.Min();
+            var maxId = new[] { id1, id2, id3 }.Max();
 
             // Act - Write data
             using (var store = new Store<string>(dbPath, "test", _loggerFactory))
@@ -520,13 +673,9 @@ namespace Baubit.Caching.LiteDB.Test.Store
             // Act - Read data after reopen
             using (var store = new Store<string>(dbPath, "test", _loggerFactory))
             {
-                // Assert - verify all data persists
-                Assert.True(store.GetEntryOrDefault(id1, out var entry1));
-                Assert.Equal("first", entry1.Value);
-                Assert.True(store.GetEntryOrDefault(id2, out var entry2));
-                Assert.Equal("second", entry2.Value);
-                Assert.True(store.GetEntryOrDefault(id3, out var entry3));
-                Assert.Equal("third", entry3.Value);
+                // Assert
+                Assert.Equal(minId, store.HeadId);
+                Assert.Equal(maxId, store.TailId);
             }
         }
 
