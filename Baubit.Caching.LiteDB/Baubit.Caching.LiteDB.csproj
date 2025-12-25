@@ -15,7 +15,7 @@
     <AssemblyOriginatorKeyFile>$(KeyFilePath)</AssemblyOriginatorKeyFile>
     <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
     <Description>LiteDB-backed L2 store (persistent) implementation for Baubit.Caching.</Description>
-    <PackageTags>cache;litedb;l2-store;persistent-cache;ordered-cache;baubit;netstandard;file-storage</PackageTags>
+    <PackageTags>cache;litedb;l2-store;persistent-cache;ordered-cache;baubit;netstandard;file-storage;baubit</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Baubit.Caching" Version="2025.51.2" />
+    <PackageReference Include="Baubit.Caching" Version="2025.52.4-prerelease" />
     <PackageReference Include="LiteDB" Version="5.0.21" />
   </ItemGroup>
 

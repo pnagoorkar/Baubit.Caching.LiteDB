@@ -62,8 +62,8 @@ namespace Baubit.Caching.LiteDB.Test.Entry
             var id = Guid.NewGuid();
             var entry = new Entry<string>(id, "test");
 
-            // Act
-            IEntry<string> ientry = entry;
+            // Act - Entry<string> implements IEntry<Guid, string>
+            Baubit.Caching.IEntry<Guid, string> ientry = entry;
 
             // Assert
             Assert.Equal(id, ientry.Id);
