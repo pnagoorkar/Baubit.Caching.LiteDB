@@ -51,14 +51,14 @@ var storeInt = new Store<int, string>(
 
 storeInt.Add(42, "value", out var entry);
 
-// Store with Guid IDs and automatic generation
+// Store with Guid IDs - uses automatic GuidV7 generation
 var storeGuid = new Store<string>(
     "cache.db",
     "guidCollection",
     loggerFactory);
 
-// IDs generated automatically using GuidV7
-storeGuid.Add(Guid.NewGuid(), "value", out var entry);
+// Provide explicit Guid if needed, or use identity generator for auto-generation
+storeGuid.Add(Guid.NewGuid(), "value", out var entryGuid);
 ```
 
 ### Creating the Store
@@ -95,26 +95,22 @@ var sharedStore = new Store<string>(db, "myCollection", loggerFactory);
 ### Basic Store Operations
 
 ```csharp
-// Generic store - explicit ID required
+// Generic store with long IDs - explicit ID required
 var storeLong = new Store<long, string>("cache.db", "col", loggerFactory);
 storeLong.Add(1L, "value", out var entry);
 storeLong.GetValueOrDefault(1L, out var value);
 storeLong.Update(1L, "new value");
 storeLong.Remove(1L, out var removed);
+storeLong.GetCount(out var count);
 
-// Guid store - automatic ID generation
-var storeGuid = new Store<string>("cache.db", "col", loggerFactory);
-storeGuid.Add(Guid.NewGuid(), "value", out var entry);
-// Or let it generate:
-// var idGen = Baubit.Identity.IdentityGenerator.CreateNew();
-// var store = new Store<string>("cache.db", "col", idGen, loggerFactory);
+// Guid store - explicit ID required
+var storeGuid = new Store<string>("cache.db", "guidCol", loggerFactory);
+storeGuid.Add(Guid.NewGuid(), "value", out var entryGuid);
+storeGuid.GetCount(out var countGuid);
 
-// Count entries
-store.GetCount(out var count);
-
-// Head and Tail IDs
-var headId = store.HeadId;  // Smallest ID
-var tailId = store.TailId;  // Largest ID
+// Head and Tail IDs (smallest and largest)
+var headId = storeLong.HeadId;
+var tailId = storeLong.TailId;
 ```
 
 ## Performance
