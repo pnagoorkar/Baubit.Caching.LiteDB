@@ -167,9 +167,21 @@ namespace Baubit.Caching.LiteDB
         public override bool GetValueOrDefault(TId? id, out TValue value)
         {
             value = default;
-            if (!GetEntryOrDefault(id, out var entry)) return false;
-            if (entry == null) return false;
-            value = entry.Value;
+            if (GetEntryOrDefault(id, out var entry))
+            {
+                if (entry != null)
+                {
+                    value = entry.Value;
+                }
+                else
+                {
+                    value = default;
+                }
+            }
+            else
+            {
+                return false;
+            }
             return true;
         }
 

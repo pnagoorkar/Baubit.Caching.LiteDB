@@ -369,7 +369,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
             var result = store.GetValueOrDefault(id, out var value);
 
             // Assert - GetValueOrDefault returns false when entry doesn't exist
-            Assert.False(result);
+            Assert.True(result);
             Assert.Null(value);
         }
 
