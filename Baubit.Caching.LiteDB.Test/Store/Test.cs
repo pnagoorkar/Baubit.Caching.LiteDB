@@ -738,7 +738,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         /// <summary>
-        /// Test store that returns null from GenerateNextId to test error handling
+        /// Test store that returns null from GenerateNextId to simulate ID generation failure
+        /// and test error handling in the Add(TValue, out IEntry) method.
         /// </summary>
         private class TestStoreWithNullIdGenerator : Baubit.Caching.LiteDB.Store<int, string>
         {
@@ -749,7 +750,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
 
             protected override int? GenerateNextId(int? lastGeneratedId)
             {
-                return null; // Always return null to trigger error path
+                // Simulates ID generation failure to test error handling in Add method
+                return null;
             }
         }
     }
