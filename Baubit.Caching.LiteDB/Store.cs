@@ -158,10 +158,8 @@ namespace Baubit.Caching.LiteDB
             entry = null;
             if (!id.HasValue) return false;
 
-            var found = _collection.FindById(new BsonValue(id.Value));
-            if (found == null) return false;
+            entry = _collection.FindById(new BsonValue(id.Value));
 
-            entry = found;
             return true;
         }
 

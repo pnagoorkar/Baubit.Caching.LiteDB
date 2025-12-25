@@ -27,22 +27,25 @@ dotnet add package Baubit.Caching.LiteDB
 - **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
-## Performance: Long vs Guid
+## Performance: Long vs GuidV7
 
-Using `long` as ID type provides significant performance benefits over `Guid`:
+Benchmarks snapshot
 
-| Operation | Long (ops/sec) | Guid (ops/sec) | Improvement |
-|-----------|----------------|----------------|-------------|
-| Read      | 50K-67K        | ~80K           | Guid 20% faster |
-| Write     | 15K-18K        | ~13K           | Long 15-38% faster |
-| Memory    | 8 bytes        | 16 bytes       | Long 50% less    |
+| Operation (ops/sec)             | GuidV7          | Long            | Long advantage |
+|---------------------------------|----------------:|----------------:|---------------:|
+| GetFirstOrDefault               | **14.9M–15.5M** | **19.6M–22.8M** | **+26–53%**    |
+| GetEntryOrDefault               | **81.1k–81.5k** | **82.7k–110.0k**| **+1–36%**     |
+| GetNextOrDefault                | **76.7k–85.3k** | **93.9k–95.9k** | **+10–25%**    |
+| Update                          | **21.8k–25.6k** | **22.4k–30.5k** | **+3–19%**     |
+| Add                             | **12.6k–12.8k** | **17.0k–19.0k** | **+35–49%**    |
+| Mixed (50% read / 50% write)    | **9.4k–10.3k**  | **13.6k–14.3k** | **+32–53%**    |
+| Mixed (80% read / 20% write)    | **7.0k–7.3k**   | **9.1k–9.5k**   | **+24–36%**    |
+| Memory (ID size only)           | **16 bytes**    | **8 bytes**     | **50% less**   |
 
-**Why long is better for most use cases:**
-- 50% smaller footprint (8 bytes vs 16 bytes) = better cache locality
-- 15-38% faster write operations (critical for caching)
-- Simpler comparison and hashing operations
-- Sequential IDs improve database index performance
-- Guid only faster on reads (less critical for caching)
+**Why long is usually faster here:**
+- Smaller key (8 bytes vs 16) improves cache locality and index overhead
+- Faster comparisons/hashing for numeric keys
+- Especially noticeable on write-heavy and mixed workloads
 
 See [Baubit.Caching.LiteDB.Benchmark/Results.md](Baubit.Caching.LiteDB.Benchmark/Results.md) for detailed benchmarks.
 

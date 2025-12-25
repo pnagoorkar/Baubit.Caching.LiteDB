@@ -4,7 +4,8 @@
 **Runtime:** .NET 9.0 (RyuJIT, X64)  
 **Hardware:** Intel Core Ultra 9 185H 2.50GHz, 1 CPU, 22 logical and 16 physical cores  
 **OS:** Windows 11  
-**GC:** (see BenchmarkDotNet output)
+**GC:** (see BenchmarkDotNet output)  
+**TId:** long
 
 ## Performance Summary
 
@@ -73,7 +74,8 @@
 **Runtime:** .NET 9.0.11 (9.0.11, 9.0.1125.51716), X64 RyuJIT x86-64-v3  
 **Hardware:** Intel Core Ultra 9 185H 2.50GHz, 1 CPU, 22 logical and 16 physical cores  
 **OS:** Windows 11 (10.0.26200.7309)  
-**GC:** Non-concurrent Workstation
+**GC:** Non-concurrent Workstation  
+**TId:** GuidV7
 
 ## Performance Summary
 
