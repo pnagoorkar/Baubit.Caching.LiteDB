@@ -56,6 +56,61 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void Store_AddWithAutoGeneration_Success()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add without explicit ID uses auto-generated Guid
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.True(result);
+            Assert.NotEqual(Guid.Empty, entry.Id);
+            Assert.Equal("test value", entry.Value);
+        }
+
+        [Fact]
+        public void Store_AddWithAutoGeneration_MultipleEntries()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add multiple values with auto-generated GuidV7s
+            store.Add("first", out var entry1);
+            store.Add("second", out var entry2);
+            store.Add("third", out var entry3);
+
+            // Assert - All should have unique IDs
+            Assert.NotEqual(entry1.Id, entry2.Id);
+            Assert.NotEqual(entry2.Id, entry3.Id);
+            Assert.NotEqual(entry1.Id, entry3.Id);
+            
+            // GuidV7 should be sequential (later IDs are greater)
+            Assert.True(entry1.Id < entry2.Id);
+            Assert.True(entry2.Id < entry3.Id);
+        }
+
+        [Fact]
+        public void Store_AddWithCustomIdentityGenerator_Success()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+            using var store = new Store<string>(dbPath, "test", identityGenerator, _loggerFactory);
+
+            // Act
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.True(result);
+            Assert.NotEqual(Guid.Empty, entry.Id);
+            Assert.Equal("test value", entry.Value);
+        }
+
+        [Fact]
         public void Store_Constructor_WithCapacity()
         {
             // Arrange
@@ -71,6 +126,54 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.Equal(10, store.TargetCapacity);
             Assert.Equal(10, store.CurrentCapacity);
             Assert.True(store.HasCapacity);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithCapacityAndIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new Store<string>(dbPath, "test", 10, 100, identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithExistingDatabase_UncappedWithIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new Store<string>(db, "test", identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.True(store.Uncapped);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithExistingDatabase_WithCapacityAndIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new Store<string>(db, "test", 10, 100, identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
         }
 
         [Fact]

@@ -86,6 +86,68 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void StoreLong_AddWithAutoGeneration_Sequential()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new StoreLong<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add multiple values with auto-generated IDs
+            store.Add("first", out var entry1);
+            store.Add("second", out var entry2);
+            store.Add("third", out var entry3);
+
+            // Assert - IDs should be sequential
+            Assert.Equal(entry1.Id + 1, entry2.Id);
+            Assert.Equal(entry2.Id + 1, entry3.Id);
+        }
+
+        [Fact]
+        public void StoreLong_Constructor_WithExistingDatabase()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+
+            // Act
+            using var store = new StoreLong<string>(db, "test", _loggerFactory);
+
+            // Assert
+            Assert.True(store.Uncapped);
+        }
+
+        [Fact]
+        public void StoreLong_Constructor_WithCapacity()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+
+            // Act
+            using var store = new StoreLong<string>(dbPath, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
+        public void StoreLong_Constructor_WithExistingDatabaseAndCapacity()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+
+            // Act
+            using var store = new StoreLong<string>(db, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
         public void StoreLong_GetEntryOrDefault_Success()
         {
             // Arrange
@@ -204,6 +266,51 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void StoreInt_Constructor_WithExistingDatabase()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+
+            // Act
+            using var store = new StoreInt<string>(db, "test", _loggerFactory);
+
+            // Assert
+            Assert.True(store.Uncapped);
+        }
+
+        [Fact]
+        public void StoreInt_Constructor_WithCapacity()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+
+            // Act
+            using var store = new StoreInt<string>(dbPath, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
+        public void StoreInt_Constructor_WithExistingDatabaseAndCapacity()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+
+            // Act
+            using var store = new StoreInt<string>(db, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
         public void StoreInt_Add_Success()
         {
             // Arrange
@@ -234,6 +341,23 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.True(result);
             Assert.True(entry.Id > 0);
             Assert.Equal("test value", entry.Value);
+        }
+
+        [Fact]
+        public void StoreInt_AddWithAutoGeneration_Sequential()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new StoreInt<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add multiple values with auto-generated IDs
+            store.Add("first", out var entry1);
+            store.Add("second", out var entry2);
+            store.Add("third", out var entry3);
+
+            // Assert - IDs should be sequential
+            Assert.Equal(entry1.Id + 1, entry2.Id);
+            Assert.Equal(entry2.Id + 1, entry3.Id);
         }
 
         [Fact]
@@ -340,6 +464,50 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.Equal("Test", retrieved.Name);
             Assert.Equal(42, retrieved.Count);
             Assert.Equal(3, retrieved.Items.Count);
+        }
+
+        #endregion
+
+        #region Edge Case Tests
+
+        [Fact]
+        public void Entry_CreatedOnUTC_Local_ConvertsToUtc()
+        {
+            // Arrange
+            var localTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Local);
+
+            // Act
+            var entry = new Entry<Guid, string>(Guid.NewGuid(), "test");
+            entry.CreatedOnUTC = localTime;
+
+            // Assert
+            Assert.Equal(DateTimeKind.Utc, entry.CreatedOnUTC.Kind);
+            Assert.Equal(localTime.ToUniversalTime(), entry.CreatedOnUTC);
+        }
+
+        [Fact]
+        public void Entry_CreatedOnUTC_Unspecified_ConvertsToUtc()
+        {
+            // Arrange
+            var unspecifiedTime = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Unspecified);
+
+            // Act
+            var entry = new Entry<Guid, string>(Guid.NewGuid(), "test");
+            entry.CreatedOnUTC = unspecifiedTime;
+
+            // Assert
+            Assert.Equal(DateTimeKind.Utc, entry.CreatedOnUTC.Kind);
+        }
+
+        [Fact]
+        public void Entry_ParameterlessConstructor_SetsDefaultCreatedOnUTC()
+        {
+            // Arrange & Act
+            var entry = new Entry<Guid, string>();
+
+            // Assert - Should have a sensible default UTC time
+            Assert.NotEqual(DateTime.MinValue, entry.CreatedOnUTC);
+            Assert.Equal(DateTimeKind.Utc, entry.CreatedOnUTC.Kind);
         }
 
         #endregion
