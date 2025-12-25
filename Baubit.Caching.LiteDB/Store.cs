@@ -120,14 +120,22 @@ namespace Baubit.Caching.LiteDB
         public override bool Add(IEntry<TId, TValue> entry)
         {
             if (!HasCapacity) return false;
-            if (_collection.Exists(x => x.Id.Equals(entry.Id))) return false;
 
             var liteEntry = new Entry<TId, TValue>(entry.Id, entry.Value)
             {
                 CreatedOnUTC = entry.CreatedOnUTC
             };
 
-            _collection.Insert(liteEntry);
+            try
+            {
+                _collection.Insert(liteEntry);
+            }
+            catch (LiteException ex) when (ex.ErrorCode == LiteException.INDEX_DUPLICATE_KEY)
+            {
+                // Duplicate key - return false
+                return false;
+            }
+            
             UpdateHeadTailOnAdd(entry.Id);
             return true;
         }
@@ -194,7 +202,7 @@ namespace Baubit.Caching.LiteDB
             entry = null;
             if (!id.HasValue) return false;
 
-            var found = _collection.FindOne(x => x.Id.Equals(id.Value));
+            var found = _collection.FindById(new BsonValue(id.Value));
             if (found == null) return false;
 
             entry = found;
@@ -213,7 +221,7 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Remove(TId id, out IEntry<TId, TValue> entry)
         {
-            var found = _collection.FindOne(x => x.Id.Equals(id));
+            var found = _collection.FindById(new BsonValue(id));
             if (found == null)
             {
                 entry = null;
@@ -229,7 +237,7 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Update(IEntry<TId, TValue> entry)
         {
-            var existing = _collection.FindOne(x => x.Id.Equals(entry.Id));
+            var existing = _collection.FindById(new BsonValue(entry.Id));
             if (existing == null) return false;
 
             existing.Value = entry.Value;
@@ -239,7 +247,7 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Update(TId id, TValue value)
         {
-            var existing = _collection.FindOne(x => x.Id.Equals(id));
+            var existing = _collection.FindById(new BsonValue(id));
             if (existing == null) return false;
 
             existing.Value = value;
@@ -413,7 +421,15 @@ namespace Baubit.Caching.LiteDB
             // Initialize the identity generator from the last (tail) ID if it exists
             if (TailId.HasValue)
             {
-                _identityGenerator.InitializeFrom(TailId.Value);
+                try
+                {
+                    _identityGenerator.InitializeFrom(TailId.Value);
+                }
+                catch (InvalidOperationException)
+                {
+                    // TailId is not a valid GUIDv7, which is OK - just don't initialize
+                    // This can happen when the database contains GUIDs created by other means
+                }
             }
         }
 
