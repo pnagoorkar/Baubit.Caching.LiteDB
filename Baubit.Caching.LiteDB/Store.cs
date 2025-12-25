@@ -168,6 +168,7 @@ namespace Baubit.Caching.LiteDB
         {
             value = default;
             if (!GetEntryOrDefault(id, out var entry)) return false;
+            if (entry == null) return false;
             value = entry.Value;
             return true;
         }

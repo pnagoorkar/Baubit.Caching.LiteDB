@@ -310,7 +310,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
-        public void Store_GetEntryOrDefault_NonExistingId_ReturnsFalse()
+        public void Store_GetEntryOrDefault_NonExistingId_ReturnsNullEntry()
         {
             // Arrange
             var dbPath = GetTempDbPath();
@@ -320,8 +320,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
             // Act
             var result = store.GetEntryOrDefault(id, out var entry);
 
-            // Assert
-            Assert.False(result);
+            // Assert - GetEntryOrDefault returns true but entry is null when not found
+            Assert.True(result);
             Assert.Null(entry);
         }
 
@@ -368,7 +368,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
             // Act
             var result = store.GetValueOrDefault(id, out var value);
 
-            // Assert
+            // Assert - GetValueOrDefault returns false when entry doesn't exist
             Assert.False(result);
             Assert.Null(value);
         }
@@ -457,7 +457,9 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.True(result);
             Assert.NotNull(removed);
             Assert.Equal("test", removed.Value);
-            Assert.False(store.GetEntryOrDefault(id, out _));
+            // GetEntryOrDefault now returns true but entry is null for non-existent entries
+            Assert.True(store.GetEntryOrDefault(id, out var entry));
+            Assert.Null(entry);
         }
 
         [Fact]
@@ -696,6 +698,21 @@ namespace Baubit.Caching.LiteDB.Test.Store
             // Assert
             Assert.NotNull(retrieved);
             Assert.Equal(createdOn, retrieved.CreatedOnUTC);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithCapacity_CreatesStore()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+
+            // Act
+            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            store.GetCount(out var count);
+            Assert.Equal(0, count);
         }
 
         private class TestComplexValue

@@ -243,10 +243,13 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.True(result2);
             Assert.Equal("third", entry2.Value);
             
-            // Verify removal
-            Assert.False(store.GetEntryOrDefault(1L, out _));
-            Assert.False(store.GetEntryOrDefault(3L, out _));
-            Assert.True(store.GetEntryOrDefault(2L, out _));
+            // Verify removal - GetEntryOrDefault returns true but entry is null
+            Assert.True(store.GetEntryOrDefault(1L, out var removed1));
+            Assert.Null(removed1);
+            Assert.True(store.GetEntryOrDefault(3L, out var removed3));
+            Assert.Null(removed3);
+            Assert.True(store.GetEntryOrDefault(2L, out var remaining));
+            Assert.NotNull(remaining);
         }
 
         #endregion
@@ -395,9 +398,12 @@ namespace Baubit.Caching.LiteDB.Test.Store
             store.Remove(3, out _);
 
             // Assert - verify only middle item remains
-            Assert.False(store.GetEntryOrDefault(1, out _));
-            Assert.True(store.GetEntryOrDefault(2, out _));
-            Assert.False(store.GetEntryOrDefault(3, out _));
+            Assert.True(store.GetEntryOrDefault(1, out var removed1));
+            Assert.Null(removed1);
+            Assert.True(store.GetEntryOrDefault(2, out var remaining));
+            Assert.NotNull(remaining);
+            Assert.True(store.GetEntryOrDefault(3, out var removed3));
+            Assert.Null(removed3);
         }
 
         [Fact]
