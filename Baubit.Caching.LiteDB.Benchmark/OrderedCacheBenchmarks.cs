@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Attributes;
+using Baubit.Caching;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using LiteDB;
@@ -18,30 +19,6 @@ internal class InMemoryStoreLong : Baubit.Caching.InMemory.Store<long, string>
     protected override long? GenerateNextId(long? lastGeneratedId)
     {
         return lastGeneratedId.HasValue ? lastGeneratedId.Value + 1 : _nextId++;
-    }
-}
-
-internal class LiteDBStoreLong : Baubit.Caching.LiteDB.Store<long, string>
-{
-    public LiteDBStoreLong(string databasePath, string collectionName, ILoggerFactory loggerFactory) : base(databasePath, collectionName, loggerFactory)
-    {
-    }
-
-    public LiteDBStoreLong(LiteDatabase database, string collectionName, ILoggerFactory loggerFactory) : base(database, collectionName, loggerFactory)
-    {
-    }
-
-    public LiteDBStoreLong(string databasePath, string collectionName, long? minCap, long? maxCap, ILoggerFactory loggerFactory) : base(databasePath, collectionName, minCap, maxCap, loggerFactory)
-    {
-    }
-
-    public LiteDBStoreLong(LiteDatabase database, string collectionName, long? minCap, long? maxCap, ILoggerFactory loggerFactory) : base(database, collectionName, minCap, maxCap, loggerFactory)
-    {
-    }
-
-    protected override long? GenerateNextId(long? lastGeneratedId)
-    {
-        return lastGeneratedId + 1;
     }
 }
 
@@ -69,7 +46,7 @@ internal class OrderedCacheLong : Baubit.Caching.OrderedCache<long, string>
 public class OrderedCacheBenchmarks
 {
     private OrderedCacheLong? _cache;
-    private LiteDB.Store<long, string>? _l2Store;
+    private StoreLong<string>? _l2Store;
     private readonly List<long> _entryIds = new();
     private int _readIndex = 0;
     private string? _dbPath;
@@ -89,9 +66,9 @@ public class OrderedCacheBenchmarks
             EvictAfterEveryX = int.MaxValue
         };
 
-        var metadata = new InMemory.Metadata<long>(config, NullLoggerFactory.Instance);
+        var metadata = new Baubit.Caching.InMemory.Metadata<long>(config, NullLoggerFactory.Instance);
         var l1Store = new InMemoryStoreLong(CacheSize / 10, CacheSize / 10, NullLoggerFactory.Instance);
-        _l2Store = new LiteDBStoreLong(_dbPath, "benchmark", NullLoggerFactory.Instance);
+        _l2Store = new StoreLong<string>(_dbPath, "benchmark", NullLoggerFactory.Instance);
 
         _cache = new OrderedCacheLong(
             config,

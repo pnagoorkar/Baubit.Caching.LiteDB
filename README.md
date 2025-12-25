@@ -35,7 +35,7 @@ using Baubit.Caching.LiteDB;
 using Microsoft.Extensions.Logging;
 
 // Store with long IDs
-var storeLong = new Store<long, string>(
+var storeLong = new StoreLong<string>(
     "cache.db",
     "myCollection",
     loggerFactory);
@@ -44,7 +44,7 @@ storeLong.Add(1L, "value", out var entry);
 storeLong.GetValueOrDefault(1L, out var value);
 
 // Store with int IDs
-var storeInt = new Store<int, string>(
+var storeInt = new StoreInt<string>(
     "cache.db",
     "intCollection",
     loggerFactory);
@@ -81,8 +81,8 @@ var cappedStore = new Store<string>(
     maxCap: 1000,
     loggerFactory);
 
-// Store with custom ID type (no automatic generation)
-var longStore = new Store<long, string>(
+// Store with custom ID type - long
+var longStore = new StoreLong<string>(
     "cache.db",
     "longCollection",
     loggerFactory);
@@ -96,7 +96,7 @@ var sharedStore = new Store<string>(db, "myCollection", loggerFactory);
 
 ```csharp
 // Generic store with long IDs - explicit ID required
-var storeLong = new Store<long, string>("cache.db", "col", loggerFactory);
+var storeLong = new StoreLong<string>("cache.db", "col", loggerFactory);
 storeLong.Add(1L, "value", out var entry);
 storeLong.GetValueOrDefault(1L, out var value);
 storeLong.Update(1L, "new value");
@@ -107,10 +107,6 @@ storeLong.GetCount(out var count);
 var storeGuid = new Store<string>("cache.db", "guidCol", loggerFactory);
 storeGuid.Add(Guid.NewGuid(), "value", out var entryGuid);
 storeGuid.GetCount(out var countGuid);
-
-// Head and Tail IDs (smallest and largest)
-var headId = storeLong.HeadId;
-var tailId = storeLong.TailId;
 ```
 
 ## Performance

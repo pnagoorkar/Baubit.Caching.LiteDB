@@ -1,59 +1,61 @@
 # Benchmark Results
 
-**Date:** December 5, 2025  
+**Date:** December 24, 2025  
 **Runtime:** .NET 9.0.11 (9.0.11, 9.0.1125.51716), X64 RyuJIT x86-64-v3  
-**Hardware:** Intel Core Ultra 9 185H 2.50GHz, 1 CPU, 22 logical and 16 physical cores  
-**OS:** Windows 11 (10.0.26200.7309)  
-**GC:** Non-concurrent Workstation
+**Hardware:** AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores  
+**OS:** Linux Ubuntu 24.04.3 LTS (Noble Numbat)  
+**GC:** Concurrent Workstation  
+**ID Type:** long (8 bytes)
 
 ## Performance Summary
 
 ### Cache Size: 1,000 Entries
 
-| Operation                      | Mean (?s) | Ops/sec    | StdDev (?s) | Allocated |
+| Operation                      | Mean (μs) | Ops/sec    | StdDev (μs) | Allocated |
 |--------------------------------|----------:|-----------:|------------:|----------:|
-| Read-Only: GetFirstOrDefault   |     67.25 | 14,870,067 |       3.603 |       0 B |
-| Read-Only: GetNextOrDefault    | 11,719.91 |     85,325 |   1,913.885 |  26,923 B |
-| Read-Only: GetEntryOrDefault   | 12,332.35 |     81,088 |     845.296 |  26,923 B |
-| Write-Only: Update             | 38,992.02 |     25,647 |     613.176 |  48,083 B |
-| Write-Only: Add                | 79,368.86 |     12,599 |   1,894.366 |  89,719 B |
-| Mixed: 50% Read, 50% Write     | 96,762.93 |     10,335 |   2,228.674 | 121,987 B |
-| Mixed: 80% Read, 20% Write     |137,378.97 |      7,279 |   2,074.464 | 219,346 B |
+| Read-Only: GetFirstOrDefault   |      0.09 | 10,784,353 |       0.004 |       0 B |
+| Read-Only: GetEntryOrDefault   |     14.78 |     67,663 |       0.274 |  23,568 B |
+| Read-Only: GetNextOrDefault    |     15.19 |     65,832 |       0.150 |  23,568 B |
+| Write-Only: Update             |     56.30 |     17,762 |       0.197 |  43,660 B |
+| Write-Only: Add                |     63.64 |     15,713 |       1.749 |  28,334 B |
+| Mixed: 50% Read, 50% Write     |     92.19 |     10,847 |       1.636 |  57,252 B |
+| Mixed: 80% Read, 20% Write     |    149.23 |      6,701 |       1.869 | 143,117 B |
 
 ### Cache Size: 10,000 Entries
 
-| Operation                      | Mean (?s) | Ops/sec    | StdDev (?s) | Allocated |
+| Operation                      | Mean (μs) | Ops/sec    | StdDev (μs) | Allocated |
 |--------------------------------|----------:|-----------:|------------:|----------:|
-| Read-Only: GetFirstOrDefault   |     64.37 | 15,535,367 |       3.133 |       0 B |
-| Read-Only: GetEntryOrDefault   | 12,265.69 |     81,527 |     169.629 |  37,471 B |
-| Read-Only: GetNextOrDefault    | 13,039.94 |     76,686 |     427.160 |  37,471 B |
-| Write-Only: Update             | 45,954.95 |     21,760 |     229.767 |  70,049 B |
-| Write-Only: Add                | 78,203.58 |     12,787 |   1,896.970 |  78,019 B |
-| Mixed: 50% Read, 50% Write     |106,811.01 |      9,362 |   5,644.325 | 115,039 B |
-| Mixed: 80% Read, 20% Write     |142,846.42 |      6,999 |   2,081.224 | 226,730 B |
+| Read-Only: GetFirstOrDefault   |      0.10 |  9,688,074 |       0.001 |       0 B |
+| Read-Only: GetEntryOrDefault   |     19.60 |     51,029 |       0.363 |  34,022 B |
+| Read-Only: GetNextOrDefault    |     19.28 |     51,861 |       0.141 |  33,871 B |
+| Write-Only: Add                |     62.01 |     16,126 |       1.637 |  22,852 B |
+| Write-Only: Update             |     67.79 |     14,752 |       0.229 |  65,074 B |
+| Mixed: 50% Read, 50% Write     |     97.57 |     10,250 |       2.408 |  56,515 B |
+| Mixed: 80% Read, 20% Write     |    160.25 |      6,240 |       2.642 | 156,192 B |
 
 ## Key Findings
 
 ### Read Performance
-- **GetFirstOrDefault** is the fastest operation at ~15 million ops/sec with zero allocations
-- **GetEntryOrDefault** and **GetNextOrDefault** perform similarly at ~80,000 ops/sec
-- Read performance is consistent across both cache sizes
+- **GetFirstOrDefault** is the fastest operation at ~10 million ops/sec with zero allocations
+- **GetEntryOrDefault** and **GetNextOrDefault** perform similarly at ~50,000-67,000 ops/sec
+- Read performance degrades slightly with larger cache sizes due to increased database query overhead
 
 ### Write Performance
-- **Update** operations (~22,000-26,000 ops/sec) are significantly faster than **Add** operations (~12,500 ops/sec)
-- Add operations require more memory allocation due to index maintenance and head/tail tracking
-- Write performance remains stable as cache size increases
+- **Add** and **Update** operations perform similarly at ~15,000-18,000 ops/sec
+- Write operations show consistent performance across cache sizes
+- Memory allocation for writes is lower with long IDs compared to Guid IDs
 
 ### Mixed Workloads
-- **80% Read, 20% Write** workload: ~7,000 ops/sec
-- **50% Read, 50% Write** workload: ~10,000 ops/sec
-- Mixed workloads show increased memory allocation due to GC pressure from combined operations
+- **80% Read, 20% Write** workload: ~6,200-6,700 ops/sec
+- **50% Read, 50% Write** workload: ~10,200-10,800 ops/sec
+- Mixed workloads show balanced performance with moderate memory allocation
 
-### Memory Characteristics
+### Memory Characteristics with Long IDs
 - GetFirstOrDefault has zero allocations, making it ideal for high-frequency head access
-- Entry retrieval operations allocate ~27-37 KB per 10,000 operations
-- Write operations allocate more memory for database persistence
-- Mixed workloads generate the most allocations (115-227 KB per 10,000 operations)
+- Entry retrieval operations allocate ~23-34 KB per 10,000 operations
+- Write operations allocate 23-65 KB per 10,000 operations depending on operation type
+- Mixed workloads generate moderate allocations (57-156 KB per 10,000 operations)
+- **Long IDs (8 bytes) require less memory than Guid IDs (16 bytes), resulting in improved cache locality and reduced allocation overhead**
 
 ## Benchmark Configuration
 
@@ -61,6 +63,7 @@
 - **Iteration Count:** 10
 - **Warmup Count:** 3
 - **Confidence Interval:** 99.9%
+- **ID Type:** long (sequential generation starting from 1)
 
 ## Detailed Results
 
@@ -68,4 +71,4 @@ For complete benchmark logs including warmup phases, GC statistics, and detailed
 
 ---
 
-*Generated from BenchmarkDotNet v0.15.6 results*
+*Generated from BenchmarkDotNet v0.15.6 results using long ID type*
