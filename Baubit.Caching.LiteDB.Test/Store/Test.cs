@@ -715,11 +715,42 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.Equal(0, count);
         }
 
+        [Fact]
+        public void Store_Add_WhenGenerateNextIdReturnsNull_Fails()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new TestStoreWithNullIdGenerator(dbPath, "test", _loggerFactory);
+
+            // Act
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.False(result);
+            Assert.Null(entry);
+        }
+
         private class TestComplexValue
         {
             public string Name { get; set; } = string.Empty;
             public int Count { get; set; }
             public List<string> Items { get; set; } = new List<string>();
+        }
+
+        /// <summary>
+        /// Test store that returns null from GenerateNextId to test error handling
+        /// </summary>
+        private class TestStoreWithNullIdGenerator : Baubit.Caching.LiteDB.Store<int, string>
+        {
+            public TestStoreWithNullIdGenerator(string databasePath, string collectionName, ILoggerFactory loggerFactory)
+                : base(databasePath, collectionName, loggerFactory)
+            {
+            }
+
+            protected override int? GenerateNextId(int? lastGeneratedId)
+            {
+                return null; // Always return null to trigger error path
+            }
         }
     }
 }
