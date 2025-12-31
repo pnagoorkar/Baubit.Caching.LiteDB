@@ -48,7 +48,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             var metadata = new Metadata<Guid>(config, NullLoggerFactory.Instance);
             var dbPath = GetTempDbPath();
             // Use Store<TValue> which inherits from Store<Guid, TValue>
-            var l2Store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory);
+            var l2Store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
             // Create L1 store with Guid type and nextId factory
             var l1Store = l1MinCap.HasValue 
                 ? new Caching.InMemory.Store<Guid, string>(
@@ -281,14 +281,14 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             string entryValue = "persisted value";
 
             // Act - Add data to LiteDB store directly and dispose
-            using (var store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory))
+            using (var store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory))
             {
                 store.Add(entryValue, out var entry);
                 entryId = entry.Id;
             }
 
             // Reopen store
-            using (var store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory))
+            using (var store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory))
             {
                 // Assert - Data should persist in LiteDB
                 var result = store.GetEntryOrDefault(entryId, out var retrieved);

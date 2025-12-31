@@ -252,7 +252,7 @@ namespace Baubit.Caching.LiteDB
     /// Provides persistent, file-based storage as an L2 backing store with automatic ID generation.
     /// </summary>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public class Store<TValue> : Store<Guid, TValue>
+    public class StoreGuid<TValue> : Store<Guid, TValue>
     {
         private readonly Baubit.Identity.IIdentityGenerator identityGenerator;
 
@@ -265,7 +265,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
         /// <param name="identityGenerator">Identity generator for creating entry IDs.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(string databasePath,
+        public StoreGuid(string databasePath,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
@@ -283,7 +283,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="identityGenerator">Identity generator for creating entry IDs.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(string databasePath,
+        public StoreGuid(string databasePath,
                      string collectionName,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
@@ -301,7 +301,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
         /// <param name="identityGenerator">Identity generator for creating entry IDs.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(LiteDatabase database,
+        public StoreGuid(LiteDatabase database,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
@@ -319,7 +319,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="identityGenerator">Identity generator for creating entry IDs.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(LiteDatabase database,
+        public StoreGuid(LiteDatabase database,
                      string collectionName,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
@@ -338,7 +338,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(string databasePath,
+        public StoreGuid(string databasePath,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
@@ -354,7 +354,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="databasePath">Path to the LiteDB database file.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(string databasePath,
+        public StoreGuid(string databasePath,
                      string collectionName,
                      ILoggerFactory loggerFactory)
             : this(databasePath, collectionName, Baubit.Identity.IdentityGenerator.CreateNew(), loggerFactory)
@@ -370,7 +370,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(LiteDatabase database,
+        public StoreGuid(LiteDatabase database,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
@@ -386,7 +386,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="database">Existing LiteDB database instance.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
-        public Store(LiteDatabase database,
+        public StoreGuid(LiteDatabase database,
                      string collectionName,
                      ILoggerFactory loggerFactory)
             : this(database, collectionName, Baubit.Identity.IdentityGenerator.CreateNew(), loggerFactory)

@@ -23,7 +23,7 @@ dotnet add package Baubit.Caching.LiteDB
 - **Generic ID Support**: Use `long`, `int`, `Guid`, or any value type implementing `IComparable<TId>` and `IEquatable<TId>`
 - **Performance Optimized**: Numeric IDs (long/int) deliver better performance than Guid - less memory, better cache locality
 - **Persistent Storage**: File-based LiteDB storage for durable caching
-- **Automatic ID Generation**: Built-in GuidV7 generation for `Store<TValue>` (backward compatible)
+- **Automatic ID Generation**: Built-in GuidV7 generation for `StoreGuid<TValue>` (backward compatible)
 - **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
@@ -81,7 +81,7 @@ var storeInt = new StoreInt<string>(
 storeInt.Add(42, "value", out var entry);
 
 // Store with Guid IDs - uses automatic GuidV7 generation
-var storeGuid = new Store<string>(
+var storeGuid = new StoreGuid<string>(
     "cache.db",
     "guidCollection",
     loggerFactory);
@@ -100,13 +100,13 @@ using Baubit.Caching.LiteDB;
 using Microsoft.Extensions.Logging;
 
 // Uncapped store with automatic Guid generation
-var store = new Store<string>(
+var store = new StoreGuid<string>(
     "cache.db",
     "myCollection",
     loggerFactory);
 
 // Capped store
-var cappedStore = new Store<string>(
+var cappedStore = new StoreGuid<string>(
     "cache.db",
     "myCollection",
     minCap: 100,
@@ -121,7 +121,7 @@ var longStore = new StoreLong<string>(
 
 // Use with existing LiteDatabase instance
 using var db = new LiteDatabase("cache.db");
-var sharedStore = new Store<string>(db, "myCollection", loggerFactory);
+var sharedStore = new StoreGuid<string>(db, "myCollection", loggerFactory);
 ```
 
 ### Basic Store Operations
@@ -136,7 +136,7 @@ storeLong.Remove(1L, out var removed);
 storeLong.GetCount(out var count);
 
 // Store with Guid IDs - auto-generates IDs
-var storeGuid = new Store<string>("cache.db", "guidCol", loggerFactory);
+var storeGuid = new StoreGuid<string>("cache.db", "guidCol", loggerFactory);
 storeGuid.Add("value", out var entryGuid);  // ID auto-generated
 storeGuid.GetCount(out var countGuid);
 ```
