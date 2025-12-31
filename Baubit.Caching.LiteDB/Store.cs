@@ -20,6 +20,16 @@ namespace Baubit.Caching.LiteDB
         private TId? lastGeneratedId;
 
         /// <summary>
+        /// Gets or sets the last ID that was added to the store.
+        /// Used to maintain ID continuity across store operations.
+        /// </summary>
+        public override TId? LastAddedId
+        {
+            get => lastGeneratedId;
+            protected set => lastGeneratedId = value;
+        }
+
+        /// <summary>
         /// Creates a new LiteDB-backed store with the specified database path.
         /// </summary>
         /// <param name="databasePath">Path to the LiteDB database file.</param>
@@ -100,6 +110,12 @@ namespace Baubit.Caching.LiteDB
         {
             var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
             var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
+            
+            // Initialize lastGeneratedId from the tail (most recent) entry
+            if (tail != null)
+            {
+                lastGeneratedId = tail.Id;
+            }
         }
 
         /// <inheritdoc />
@@ -115,6 +131,7 @@ namespace Baubit.Caching.LiteDB
             try
             {
                 _collection.Insert(liteEntry);
+                LastAddedId = entry.Id;
             }
             catch (LiteException ex) when (ex.ErrorCode == LiteException.INDEX_DUPLICATE_KEY)
             {

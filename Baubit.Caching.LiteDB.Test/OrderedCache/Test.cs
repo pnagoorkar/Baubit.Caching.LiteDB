@@ -49,9 +49,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             var dbPath = GetTempDbPath();
             // Use Store<TValue> which inherits from Store<Guid, TValue>
             var l2Store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            // Use Store<TValue> for L1 as well
+            // Create L1 store with Guid type and nextId factory
             var l1Store = l1MinCap.HasValue 
-                ? new Caching.InMemory.Store<string>(l1MinCap, l1MaxCap, identityGenerator, _loggerFactory) 
+                ? new Caching.InMemory.Store<Guid, string>(
+                    l1MinCap, 
+                    l1MaxCap, 
+                    lastId => identityGenerator.GetNext(), 
+                    _loggerFactory) 
                 : null;
 
             return new Caching.OrderedCache<Guid, string>(config, l1Store, l2Store, metadata, _loggerFactory);

@@ -9,16 +9,14 @@ namespace Baubit.Caching.LiteDB.Benchmark;
 // Helper classes for long ID support - must be defined first
 internal class InMemoryStoreLong : Baubit.Caching.InMemory.Store<long, string>
 {
-    private long _nextId = 1;
-
     public InMemoryStoreLong(long? minCap, long? maxCap, ILoggerFactory loggerFactory)
-        : base(minCap, maxCap, loggerFactory)
+        : base(minCap, maxCap, GenerateNextLongId, loggerFactory)
     {
     }
 
-    protected override long? GenerateNextId(long? lastGeneratedId)
+    private static long? GenerateNextLongId(long? lastGeneratedId)
     {
-        return lastGeneratedId.HasValue ? lastGeneratedId.Value + 1 : _nextId++;
+        return lastGeneratedId.HasValue ? lastGeneratedId.Value + 1 : 1;
     }
 }
 
