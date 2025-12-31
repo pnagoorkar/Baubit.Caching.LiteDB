@@ -1,4 +1,3 @@
-using Baubit.Caching;
 using LiteDB;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,25 +8,26 @@ namespace Baubit.Caching.LiteDB
     /// LiteDB-backed store implementation for Baubit.Caching.
     /// Provides persistent, file-based storage as an L2 backing store.
     /// </summary>
+    /// <typeparam name="TId">The type of the unique identifier. Must be a value type that implements IComparable and IEquatable.</typeparam>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public class Store<TValue> : Baubit.Caching.Store<TValue>
+    public abstract class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
+        where TId : struct, IComparable<TId>, IEquatable<TId>
     {
         private readonly LiteDatabase _database;
-        private readonly ILiteCollection<Entry<TValue>> _collection;
-        private readonly ILogger<Store<TValue>> _logger;
+        private readonly ILiteCollection<Entry<TId, TValue>> _collection;
+        private readonly ILogger<Store<TId, TValue>> _logger;
         private readonly bool _ownsDatabase;
-        private Guid? _headId;
-        private Guid? _tailId;
+        private TId? lastGeneratedId;
 
         /// <summary>
-        /// Gets the identifier of the first (head/oldest) entry in the store.
+        /// Gets or sets the last ID that was added to the store.
+        /// Used to maintain ID continuity across store operations.
         /// </summary>
-        public override Guid? HeadId => _headId;
-
-        /// <summary>
-        /// Gets the identifier of the last (tail/newest) entry in the store.
-        /// </summary>
-        public override Guid? TailId => _tailId;
+        public override TId? LastAddedId
+        {
+            get => lastGeneratedId;
+            protected set => lastGeneratedId = value;
+        }
 
         /// <summary>
         /// Creates a new LiteDB-backed store with the specified database path.
@@ -44,7 +44,7 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<Store<TValue>>();
+            _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
 
             _database = new LiteDatabase(new ConnectionString
             {
@@ -52,7 +52,7 @@ namespace Baubit.Caching.LiteDB
                 Upgrade = true
             });
             _ownsDatabase = true;
-            _collection = _database.GetCollection<Entry<TValue>>(collectionName);
+            _collection = _database.GetCollection<Entry<TId, TValue>>(collectionName);
             _collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
@@ -85,10 +85,10 @@ namespace Baubit.Caching.LiteDB
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<Store<TValue>>();
+            _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
             _database = database ?? throw new ArgumentNullException(nameof(database));
             _ownsDatabase = false;
-            _collection = _database.GetCollection<Entry<TValue>>(collectionName);
+            _collection = _database.GetCollection<Entry<TId, TValue>>(collectionName);
             _collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
@@ -110,66 +110,57 @@ namespace Baubit.Caching.LiteDB
         {
             var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
             var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
-            _headId = head?.Id;
-            _tailId = tail?.Id;
+            
+            // Initialize lastGeneratedId from the tail (most recent) entry
+            if (tail != null)
+            {
+                lastGeneratedId = tail.Id;
+            }
         }
 
         /// <inheritdoc />
-        public override bool Add(IEntry<TValue> entry)
+        public override bool Add(IEntry<TId, TValue> entry)
         {
             if (!HasCapacity) return false;
-            if (_collection.Exists(x => x.Id == entry.Id)) return false;
 
-            var liteEntry = new Entry<TValue>(entry.Id, entry.Value)
+            var liteEntry = new Entry<TId, TValue>(entry.Id, entry.Value)
             {
                 CreatedOnUTC = entry.CreatedOnUTC
             };
 
-            _collection.Insert(liteEntry);
-            UpdateHeadTailOnAdd(entry.Id);
+            try
+            {
+                _collection.Insert(liteEntry);
+                LastAddedId = entry.Id;
+            }
+            catch (LiteException ex) when (ex.ErrorCode == LiteException.INDEX_DUPLICATE_KEY)
+            {
+                // Duplicate key - return false
+                return false;
+            }
             return true;
         }
 
         /// <inheritdoc />
-        public override bool Add(Guid id, TValue value, out IEntry<TValue> entry)
+        public override bool Add(TId id, TValue value, out IEntry<TId, TValue> entry)
         {
-            entry = new Entry<TValue>(id, value);
+            entry = new Entry<TId, TValue>(id, value);
             return Add(entry);
         }
 
-        private void UpdateHeadTailOnAdd(Guid id)
+        /// <inheritdoc />
+        public override bool Add(TValue value, out IEntry<TId, TValue> entry)
         {
-            if (!_headId.HasValue || id.CompareTo(_headId.Value) < 0)
+            var nextId = GenerateNextId(lastGeneratedId);
+            if (nextId == null)
             {
-                _headId = id;
+                entry = default;
+                return false;
             }
-            if (!_tailId.HasValue || id.CompareTo(_tailId.Value) > 0)
-            {
-                _tailId = id;
-            }
+            lastGeneratedId = nextId;
+            return Add(nextId.Value, value, out entry);
         }
-
-        private void UpdateHeadTailOnRemove(Guid id)
-        {
-            var count = _collection.Count();
-            if (count == 0)
-            {
-                _headId = null;
-                _tailId = null;
-                return;
-            }
-
-            if (_headId.HasValue && id.CompareTo(_headId.Value) == 0)
-            {
-                var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
-                _headId = head?.Id;
-            }
-            if (_tailId.HasValue && id.CompareTo(_tailId.Value) == 0)
-            {
-                var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
-                _tailId = tail?.Id;
-            }
-        }
+        protected abstract TId? GenerateNextId(TId? lastGeneratedId);
 
         /// <inheritdoc />
         public override bool GetCount(out long count)
@@ -179,47 +170,57 @@ namespace Baubit.Caching.LiteDB
         }
 
         /// <inheritdoc />
-        public override bool GetEntryOrDefault(Guid? id, out IEntry<TValue> entry)
+        public override bool GetEntryOrDefault(TId? id, out IEntry<TId, TValue> entry)
         {
             entry = null;
             if (!id.HasValue) return false;
 
-            var found = _collection.FindOne(x => x.Id == id.Value);
-            if (found == null) return false;
+            entry = _collection.FindById(new BsonValue(id.Value));
 
-            entry = found;
             return true;
         }
 
         /// <inheritdoc />
-        public override bool GetValueOrDefault(Guid? id, out TValue value)
+        public override bool GetValueOrDefault(TId? id, out TValue value)
         {
             value = default;
-            if (!GetEntryOrDefault(id, out var entry)) return false;
-            value = entry.Value;
+            if (GetEntryOrDefault(id, out var entry))
+            {
+                if (entry != null)
+                {
+                    value = entry.Value;
+                }
+                else
+                {
+                    value = default;
+                }
+            }
+            else
+            {
+                return false;
+            }
             return true;
         }
 
         /// <inheritdoc />
-        public override bool Remove(Guid id, out IEntry<TValue> entry)
+        public override bool Remove(TId id, out IEntry<TId, TValue> entry)
         {
-            var found = _collection.FindOne(x => x.Id == id);
+            var found = _collection.FindById(new BsonValue(id));
             if (found == null)
             {
                 entry = null;
                 return false;
             }
 
-            _collection.Delete(id);
-            UpdateHeadTailOnRemove(id);
+            _collection.Delete(new BsonValue(id));
             entry = found;
             return true;
         }
 
         /// <inheritdoc />
-        public override bool Update(IEntry<TValue> entry)
+        public override bool Update(IEntry<TId, TValue> entry)
         {
-            var existing = _collection.FindOne(x => x.Id == entry.Id);
+            var existing = _collection.FindById(new BsonValue(entry.Id));
             if (existing == null) return false;
 
             existing.Value = entry.Value;
@@ -227,9 +228,9 @@ namespace Baubit.Caching.LiteDB
         }
 
         /// <inheritdoc />
-        public override bool Update(Guid id, TValue value)
+        public override bool Update(TId id, TValue value)
         {
-            var existing = _collection.FindOne(x => x.Id == id);
+            var existing = _collection.FindById(new BsonValue(id));
             if (existing == null) return false;
 
             existing.Value = value;
@@ -239,8 +240,6 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         protected override void DisposeInternal()
         {
-            _headId = null;
-            _tailId = null;
             if (_ownsDatabase)
             {
                 _database?.Dispose();

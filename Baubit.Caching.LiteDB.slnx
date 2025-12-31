@@ -2,6 +2,7 @@
   <Folder Name="/SolutionItems/">
     <File Path=".circleci/config.yml" />
     <File Path=".github/copilot-instructions.md" />
+    <File Path="codecov.yml" />
   </Folder>
   <Project Path="Baubit.Caching.LiteDB.Benchmark/Baubit.Caching.LiteDB.Benchmark.csproj" />
   <Project Path="Baubit.Caching.LiteDB.Test/Baubit.Caching.LiteDB.Test.csproj" />

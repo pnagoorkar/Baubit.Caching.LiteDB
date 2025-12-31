@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Baubit.Caching.LiteDB.Test.Store
 {
     /// <summary>
-    /// Tests for <see cref="Baubit.Caching.LiteDB.Store{TValue}"/>
+    /// Tests for <see cref="Baubit.Caching.LiteDB.StoreGuid{TValue}"/>
     /// </summary>
     public class Test : IDisposable
     {
@@ -44,7 +44,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
             var dbPath = GetTempDbPath();
 
             // Act
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
 
             // Assert
             Assert.True(store.Uncapped);
@@ -56,13 +56,68 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void Store_AddWithAutoGeneration_Success()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add without explicit ID uses auto-generated Guid
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.True(result);
+            Assert.NotEqual(Guid.Empty, entry.Id);
+            Assert.Equal("test value", entry.Value);
+        }
+
+        [Fact]
+        public void Store_AddWithAutoGeneration_MultipleEntries()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
+
+            // Act - Add multiple values with auto-generated GuidV7s
+            store.Add("first", out var entry1);
+            store.Add("second", out var entry2);
+            store.Add("third", out var entry3);
+
+            // Assert - All should have unique IDs
+            Assert.NotEqual(entry1.Id, entry2.Id);
+            Assert.NotEqual(entry2.Id, entry3.Id);
+            Assert.NotEqual(entry1.Id, entry3.Id);
+            
+            // GuidV7 should be sequential (later IDs are greater)
+            Assert.True(entry1.Id < entry2.Id);
+            Assert.True(entry2.Id < entry3.Id);
+        }
+
+        [Fact]
+        public void Store_AddWithCustomIdentityGenerator_Success()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
+
+            // Act
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.True(result);
+            Assert.NotEqual(Guid.Empty, entry.Id);
+            Assert.Equal("test value", entry.Value);
+        }
+
+        [Fact]
         public void Store_Constructor_WithCapacity()
         {
             // Arrange
             var dbPath = GetTempDbPath();
 
             // Act
-            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
 
             // Assert
             Assert.False(store.Uncapped);
@@ -74,6 +129,54 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
+        public void Store_Constructor_WithCapacityAndIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithExistingDatabase_UncappedWithIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new StoreGuid<string>(db, "test", identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.True(store.Uncapped);
+        }
+
+        [Fact]
+        public void Store_Constructor_WithExistingDatabase_WithCapacityAndIdentityGenerator()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var db = new LiteDatabase(dbPath);
+            var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+            // Act
+            using var store = new StoreGuid<string>(db, "test", 10, 100, identityGenerator, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            Assert.Equal(10, store.MinCapacity);
+            Assert.Equal(100, store.MaxCapacity);
+        }
+
+        [Fact]
         public void Store_Constructor_WithExistingDatabase()
         {
             // Arrange
@@ -81,12 +184,10 @@ namespace Baubit.Caching.LiteDB.Test.Store
             using var db = new LiteDatabase(dbPath);
 
             // Act
-            using var store = new Store<string>(db, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(db, "test", _loggerFactory);
 
             // Assert
             Assert.True(store.Uncapped);
-            Assert.Null(store.HeadId);
-            Assert.Null(store.TailId);
         }
 
         [Fact]
@@ -97,7 +198,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
             using var db = new LiteDatabase(dbPath);
 
             // Act
-            using var store = new Store<string>(db, "test", 5, 50, _loggerFactory);
+            using var store = new StoreGuid<string>(db, "test", 5, 50, _loggerFactory);
 
             // Assert
             Assert.False(store.Uncapped);
@@ -110,7 +211,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new Store<string>((LiteDatabase)null!, "test", _loggerFactory));
+                new StoreGuid<string>((LiteDatabase)null!, "test", _loggerFactory));
         }
 
         [Fact]
@@ -118,7 +219,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             var entry = new Entry<string>(id, "test");
 
@@ -138,7 +239,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<int>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<int>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
@@ -156,7 +257,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 2, 2, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 2, 2, _loggerFactory);
             var id1 = Guid.NewGuid();
             var id2 = Guid.NewGuid();
             var id3 = Guid.NewGuid();
@@ -178,7 +279,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
@@ -195,7 +296,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             store.Add(id, "test value", out _);
 
@@ -209,18 +310,18 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
-        public void Store_GetEntryOrDefault_NonExistingId_ReturnsFalse()
+        public void Store_GetEntryOrDefault_NonExistingId_ReturnsNullEntry()
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
             var result = store.GetEntryOrDefault(id, out var entry);
 
-            // Assert
-            Assert.False(result);
+            // Assert - GetEntryOrDefault returns true but entry is null when not found
+            Assert.True(result);
             Assert.Null(entry);
         }
 
@@ -229,7 +330,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
 
             // Act
             var result = store.GetEntryOrDefault(null, out var entry);
@@ -244,7 +345,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<int>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<int>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             store.Add(id, 123, out _);
 
@@ -261,14 +362,14 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
             var result = store.GetValueOrDefault(id, out var value);
 
-            // Assert
-            Assert.False(result);
+            // Assert - GetValueOrDefault returns false when entry doesn't exist
+            Assert.True(result);
             Assert.Null(value);
         }
 
@@ -277,7 +378,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             store.Add(id, "original", out _);
 
@@ -295,7 +396,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<int>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<int>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             store.Add(id, 10, out _);
             var updatedEntry = new Entry<int>(id, 20);
@@ -314,7 +415,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             var entry = new Entry<string>(id, "test");
 
@@ -330,7 +431,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
@@ -345,7 +446,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             store.Add(id, "test", out _);
 
@@ -356,7 +457,9 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.True(result);
             Assert.NotNull(removed);
             Assert.Equal("test", removed.Value);
-            Assert.False(store.GetEntryOrDefault(id, out _));
+            // GetEntryOrDefault now returns true but entry is null for non-existent entries
+            Assert.True(store.GetEntryOrDefault(id, out var entry));
+            Assert.Null(entry);
         }
 
         [Fact]
@@ -364,7 +467,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
@@ -380,7 +483,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             store.Add(Guid.NewGuid(), "first", out _);
             store.Add(Guid.NewGuid(), "second", out _);
 
@@ -393,160 +496,11 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
-        public void Store_HeadId_ReturnsMinimumGuid()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id1 = Guid.NewGuid();
-            var id2 = Guid.NewGuid();
-            var id3 = Guid.NewGuid();
-            var minId = new[] { id1, id2, id3 }.Min();
-
-            // Act
-            store.Add(id1, "first", out _);
-            store.Add(id2, "second", out _);
-            store.Add(id3, "third", out _);
-
-            // Assert
-            Assert.Equal(minId, store.HeadId);
-        }
-
-        [Fact]
-        public void Store_TailId_ReturnsMaximumGuid()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id1 = Guid.NewGuid();
-            var id2 = Guid.NewGuid();
-            var id3 = Guid.NewGuid();
-            var maxId = new[] { id1, id2, id3 }.Max();
-
-            // Act
-            store.Add(id1, "first", out _);
-            store.Add(id2, "second", out _);
-            store.Add(id3, "third", out _);
-
-            // Assert
-            Assert.Equal(maxId, store.TailId);
-        }
-
-        [Fact]
-        public void Store_HeadId_EmptyStore_ReturnsNull()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-
-            // Act & Assert
-            Assert.Null(store.HeadId);
-        }
-
-        [Fact]
-        public void Store_TailId_EmptyStore_ReturnsNull()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-
-            // Act & Assert
-            Assert.Null(store.TailId);
-        }
-
-        [Fact]
-        public void Store_HeadId_UpdatesAfterRemoveHead()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id1 = Guid.NewGuid();
-            var id2 = Guid.NewGuid();
-            var ids = new[] { id1, id2 }.OrderBy(x => x).ToArray();
-            var minId = ids[0];
-            var secondMinId = ids[1];
-
-            store.Add(id1, "first", out _);
-            store.Add(id2, "second", out _);
-
-            // Act
-            store.Remove(minId, out _);
-
-            // Assert
-            Assert.Equal(secondMinId, store.HeadId);
-        }
-
-        [Fact]
-        public void Store_TailId_UpdatesAfterRemoveTail()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id1 = Guid.NewGuid();
-            var id2 = Guid.NewGuid();
-            var ids = new[] { id1, id2 }.OrderByDescending(x => x).ToArray();
-            var maxId = ids[0];
-            var secondMaxId = ids[1];
-
-            store.Add(id1, "first", out _);
-            store.Add(id2, "second", out _);
-
-            // Act
-            store.Remove(maxId, out _);
-
-            // Assert
-            Assert.Equal(secondMaxId, store.TailId);
-        }
-
-        [Fact]
-        public void Store_HeadTail_UpdateToNullAfterRemoveAll()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id = Guid.NewGuid();
-            store.Add(id, "test", out _);
-
-            // Act
-            store.Remove(id, out _);
-
-            // Assert
-            Assert.Null(store.HeadId);
-            Assert.Null(store.TailId);
-        }
-
-        [Fact]
-        public void Store_HeadTail_UnchangedAfterRemoveMiddle()
-        {
-            // Arrange
-            var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
-            var id1 = Guid.NewGuid();
-            var id2 = Guid.NewGuid();
-            var id3 = Guid.NewGuid();
-            var ids = new[] { id1, id2, id3 }.OrderBy(x => x).ToArray();
-            var minId = ids[0];
-            var middleId = ids[1];
-            var maxId = ids[2];
-
-            store.Add(id1, "first", out _);
-            store.Add(id2, "second", out _);
-            store.Add(id3, "third", out _);
-
-            // Act
-            store.Remove(middleId, out _);
-
-            // Assert - Head and tail should remain unchanged
-            Assert.Equal(minId, store.HeadId);
-            Assert.Equal(maxId, store.TailId);
-        }
-
-        [Fact]
         public void Store_AddCapacity_IncreasesCapacity()
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
             var initialCapacity = store.TargetCapacity;
 
             // Act
@@ -562,7 +516,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
 
             // Act
             var result = store.AddCapacity(200);
@@ -577,7 +531,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
             store.AddCapacity(40); // Set to 50
             var beforeCut = store.TargetCapacity;
 
@@ -594,7 +548,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 10, 100, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
 
             // Act
             var result = store.CutCapacity(20);
@@ -609,7 +563,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", 5, 10, _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", 5, 10, _loggerFactory);
             Assert.Equal(5, store.CurrentCapacity);
 
             // Act - Add entries
@@ -636,13 +590,13 @@ namespace Baubit.Caching.LiteDB.Test.Store
             var id = Guid.NewGuid();
 
             // Act - Write data
-            using (var store = new Store<string>(dbPath, "test", _loggerFactory))
+            using (var store = new StoreGuid<string>(dbPath, "test", _loggerFactory))
             {
                 store.Add(id, "persisted value", out _);
             }
 
             // Act - Read data after reopen
-            using (var store = new Store<string>(dbPath, "test", _loggerFactory))
+            using (var store = new StoreGuid<string>(dbPath, "test", _loggerFactory))
             {
                 // Assert
                 var result = store.GetValueOrDefault(id, out var value);
@@ -659,11 +613,9 @@ namespace Baubit.Caching.LiteDB.Test.Store
             var id1 = Guid.NewGuid();
             var id2 = Guid.NewGuid();
             var id3 = Guid.NewGuid();
-            var minId = new[] { id1, id2, id3 }.Min();
-            var maxId = new[] { id1, id2, id3 }.Max();
 
             // Act - Write data
-            using (var store = new Store<string>(dbPath, "test", _loggerFactory))
+            using (var store = new StoreGuid<string>(dbPath, "test", _loggerFactory))
             {
                 store.Add(id1, "first", out _);
                 store.Add(id2, "second", out _);
@@ -671,11 +623,15 @@ namespace Baubit.Caching.LiteDB.Test.Store
             }
 
             // Act - Read data after reopen
-            using (var store = new Store<string>(dbPath, "test", _loggerFactory))
+            using (var store = new StoreGuid<string>(dbPath, "test", _loggerFactory))
             {
-                // Assert
-                Assert.Equal(minId, store.HeadId);
-                Assert.Equal(maxId, store.TailId);
+                // Assert - verify all data persists
+                Assert.True(store.GetEntryOrDefault(id1, out var entry1));
+                Assert.Equal("first", entry1.Value);
+                Assert.True(store.GetEntryOrDefault(id2, out var entry2));
+                Assert.Equal("second", entry2.Value);
+                Assert.True(store.GetEntryOrDefault(id3, out var entry3));
+                Assert.Equal("third", entry3.Value);
             }
         }
 
@@ -684,7 +640,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<TestComplexValue>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<TestComplexValue>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             var complexValue = new TestComplexValue
             {
@@ -710,8 +666,8 @@ namespace Baubit.Caching.LiteDB.Test.Store
             // Arrange
             var dbPath = GetTempDbPath();
             using var db = new LiteDatabase(dbPath);
-            using var store1 = new Store<string>(db, "collection1", _loggerFactory);
-            using var store2 = new Store<int>(db, "collection2", _loggerFactory);
+            using var store1 = new StoreGuid<string>(db, "collection1", _loggerFactory);
+            using var store2 = new StoreGuid<int>(db, "collection2", _loggerFactory);
             var id = Guid.NewGuid();
 
             // Act
@@ -730,7 +686,7 @@ namespace Baubit.Caching.LiteDB.Test.Store
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new Store<string>(dbPath, "test", _loggerFactory);
+            using var store = new StoreGuid<string>(dbPath, "test", _loggerFactory);
             var id = Guid.NewGuid();
             var createdOn = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
             var entry = new Entry<string>(id, "test") { CreatedOnUTC = createdOn };
@@ -744,11 +700,59 @@ namespace Baubit.Caching.LiteDB.Test.Store
             Assert.Equal(createdOn, retrieved.CreatedOnUTC);
         }
 
+        [Fact]
+        public void Store_Constructor_WithCapacity_CreatesStore()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+
+            // Act
+            using var store = new StoreGuid<string>(dbPath, "test", 10, 100, _loggerFactory);
+
+            // Assert
+            Assert.False(store.Uncapped);
+            store.GetCount(out var count);
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void Store_Add_WhenGenerateNextIdReturnsNull_Fails()
+        {
+            // Arrange
+            var dbPath = GetTempDbPath();
+            using var store = new TestStoreWithNullIdGenerator(dbPath, "test", _loggerFactory);
+
+            // Act
+            var result = store.Add("test value", out var entry);
+
+            // Assert
+            Assert.False(result);
+            Assert.Null(entry);
+        }
+
         private class TestComplexValue
         {
             public string Name { get; set; } = string.Empty;
             public int Count { get; set; }
             public List<string> Items { get; set; } = new List<string>();
+        }
+
+        /// <summary>
+        /// Test store that returns null from GenerateNextId to simulate ID generation failure
+        /// and test error handling in the Add(TValue, out IEntry) method.
+        /// </summary>
+        private class TestStoreWithNullIdGenerator : Baubit.Caching.LiteDB.Store<int, string>
+        {
+            public TestStoreWithNullIdGenerator(string databasePath, string collectionName, ILoggerFactory loggerFactory)
+                : base(databasePath, collectionName, loggerFactory)
+            {
+            }
+
+            protected override int? GenerateNextId(int? lastGeneratedId)
+            {
+                // Simulates ID generation failure to test error handling in Add method
+                return null;
+            }
         }
     }
 }
