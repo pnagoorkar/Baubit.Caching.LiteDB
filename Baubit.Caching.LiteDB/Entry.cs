@@ -70,7 +70,7 @@ namespace Baubit.Caching.LiteDB
     }
 
     /// <summary>
-    /// Entry class for LiteDB storage that implements <see cref="IEntry{TValue}"/> using Guid as the ID type.
+    /// Entry class for LiteDB storage that implements <see cref="IEntry{TId, TValue}"/> using Guid as the ID type.
     /// </summary>
     /// <typeparam name="TValue">The type of value stored in the entry.</typeparam>
     public class Entry<TValue> : Entry<Guid, TValue>

@@ -48,10 +48,14 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             var metadata = new Metadata<Guid>(config, NullLoggerFactory.Instance);
             var dbPath = GetTempDbPath();
             // Use Store<TValue> which inherits from Store<Guid, TValue>
-            var l2Store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            // Use Store<TValue> for L1 as well
+            var l2Store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
+            // Create L1 store with Guid type and nextId factory
             var l1Store = l1MinCap.HasValue 
-                ? new Caching.InMemory.Store<string>(l1MinCap, l1MaxCap, identityGenerator, _loggerFactory) 
+                ? new Caching.InMemory.Store<Guid, string>(
+                    l1MinCap, 
+                    l1MaxCap, 
+                    lastId => identityGenerator.GetNext(), 
+                    _loggerFactory) 
                 : null;
 
             return new Caching.OrderedCache<Guid, string>(config, l1Store, l2Store, metadata, _loggerFactory);
@@ -277,14 +281,14 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             string entryValue = "persisted value";
 
             // Act - Add data to LiteDB store directly and dispose
-            using (var store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory))
+            using (var store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory))
             {
                 store.Add(entryValue, out var entry);
                 entryId = entry.Id;
             }
 
             // Reopen store
-            using (var store = new Baubit.Caching.LiteDB.Store<string>(dbPath, "test", identityGenerator, _loggerFactory))
+            using (var store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory))
             {
                 // Assert - Data should persist in LiteDB
                 var result = store.GetEntryOrDefault(entryId, out var retrieved);
