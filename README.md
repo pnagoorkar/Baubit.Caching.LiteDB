@@ -27,6 +27,10 @@ dotnet add package Baubit.Caching.LiteDB
 - **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
+## Backward Compatibility
+
+The `StoreGuid<TValue>`, `StoreLong<TValue>`, and `StoreInt<TValue>` classes were added to maintain backward compatibility with code written against Baubit.Caching v2025.52+. These classes provide concrete implementations that handle ID generation internally, simplifying usage for common scenarios while the abstract `Store<TId, TValue>` base class enables custom ID type implementations.
+
 ## Performance
 
 Benchmarks show numeric IDs (`long`, `int`) deliver better performance than `Guid`:
