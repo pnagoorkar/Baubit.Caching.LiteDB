@@ -45,7 +45,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
         {
             config ??= new Caching.Configuration();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var metadata = new Metadata<Guid>(config, NullLoggerFactory.Instance);
+            var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, NullLoggerFactory.Instance);
             var dbPath = GetTempDbPath();
             // Use Store<TValue> which inherits from Store<Guid, TValue>
             var l2Store = new Baubit.Caching.LiteDB.StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
