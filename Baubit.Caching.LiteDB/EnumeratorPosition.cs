@@ -55,12 +55,12 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="sessionId">The enumerator session ID.</param>
         /// <param name="currentId">The current position in enumeration.</param>
-        /// <param name="lastUpdatedUtc">The UTC timestamp for when this position was last updated.</param>
-        public EnumeratorPosition(string sessionId, TId? currentId, DateTime lastUpdatedUtc)
+        /// <param name="lastUpdatedUTC">The UTC timestamp for when this position was last updated.</param>
+        public EnumeratorPosition(string sessionId, TId? currentId, DateTime lastUpdatedUTC)
         {
             SessionId = sessionId;
             CurrentId = currentId;
-            LastUpdatedUTC = lastUpdatedUtc;
+            LastUpdatedUTC = lastUpdatedUTC;
         }
     }
 }
