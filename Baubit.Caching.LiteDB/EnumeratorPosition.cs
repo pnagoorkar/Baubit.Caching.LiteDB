@@ -25,16 +25,24 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         public TId? CurrentId { get; set; }
 
+        private DateTime _lastUpdatedUTC;
+
         /// <summary>
         /// Gets or sets the UTC timestamp when this position was last updated.
+        /// The setter ensures the DateTime.Kind is always UTC.
         /// </summary>
-        public DateTime LastUpdatedUTC { get; set; }
+        public DateTime LastUpdatedUTC
+        {
+            get => _lastUpdatedUTC;
+            set => _lastUpdatedUTC = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        }
 
         /// <summary>
         /// Parameterless constructor required for LiteDB serialization.
         /// </summary>
         public EnumeratorPosition()
         {
+            SessionId = "";
             LastUpdatedUTC = DateTime.UtcNow;
         }
 
@@ -43,24 +51,12 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="sessionId">The enumerator session ID.</param>
         /// <param name="currentId">The current position in enumeration.</param>
-        public EnumeratorPosition(string sessionId, TId? currentId)
+        /// <param name="lastUpdatedUTC">The UTC timestamp for when this position was last updated. If null, uses current UTC time.</param>
+        public EnumeratorPosition(string sessionId, TId? currentId, DateTime? lastUpdatedUTC = null)
         {
             SessionId = sessionId;
             CurrentId = currentId;
-            LastUpdatedUTC = DateTime.UtcNow;
-        }
-
-        /// <summary>
-        /// Creates a new enumerator position with explicit timestamp.
-        /// </summary>
-        /// <param name="sessionId">The enumerator session ID.</param>
-        /// <param name="currentId">The current position in enumeration.</param>
-        /// <param name="lastUpdatedUTC">The UTC timestamp for when this position was last updated.</param>
-        public EnumeratorPosition(string sessionId, TId? currentId, DateTime lastUpdatedUTC)
-        {
-            SessionId = sessionId;
-            CurrentId = currentId;
-            LastUpdatedUTC = lastUpdatedUTC;
+            LastUpdatedUTC = lastUpdatedUTC ?? DateTime.UtcNow;
         }
     }
 }
