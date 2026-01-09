@@ -80,10 +80,11 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumeratorFactory
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+            using var database = new LiteDatabase(dbPath);
             var config = new Configuration { ResumeSession = false };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -108,14 +109,15 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumeratorFactory
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+            using var database = new LiteDatabase(dbPath);
             var config = new Configuration 
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1  // Enable persistence for this test
             };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -147,14 +149,15 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumeratorFactory
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+            using var database = new LiteDatabase(dbPath);
             var config = new Configuration 
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1  // Enable persistence for this test
             };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -178,7 +181,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumeratorFactory
             await enum2.DisposeAsync();
 
             // Verify positions are saved independently
-            var positionCollection = StoreTestHelper.GetDatabase(store).GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
+            var positionCollection = database.GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
             var pos1 = positionCollection.FindById("session-1");
             var pos2 = positionCollection.FindById("session-2");
 

@@ -14,7 +14,8 @@ namespace Baubit.Caching.LiteDB
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
         /// <summary>
-        /// Creates a new cache async enumerator starting from the beginning.
+        /// Creates a new cache async enumerator.
+        /// If startPosition is provided, starts from that position; otherwise starts from the beginning.
         /// </summary>
         /// <param name="cache">The ordered cache to enumerate.</param>
         /// <param name="onDispose">Action to invoke on dispose.</param>
@@ -22,35 +23,15 @@ namespace Baubit.Caching.LiteDB
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
         /// <param name="configuration">Configuration with persistence settings.</param>
+        /// <param name="startPosition">Optional position to start enumeration from. If null, starts from the beginning.</param>
         public CacheAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
             string id,
             CancellationToken cancellationToken,
             ILiteCollection<EnumeratorPosition<TId>> positionCollection,
-            Configuration configuration)
-            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new cache async enumerator starting from a specific position.
-        /// </summary>
-        /// <param name="cache">The ordered cache to enumerate.</param>
-        /// <param name="onDispose">Action to invoke on dispose.</param>
-        /// <param name="id">Unique identifier for this enumeration session.</param>
-        /// <param name="startPosition">The position to start enumeration from.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
-        /// <param name="configuration">Configuration with persistence settings.</param>
-        internal CacheAsyncEnumerator(
-            IOrderedCache<TId, TValue> cache,
-            Action<ICacheEnumerator<TId>> onDispose,
-            string id,
-            TId? startPosition,
-            CancellationToken cancellationToken,
-            ILiteCollection<EnumeratorPosition<TId>> positionCollection,
-            Configuration configuration)
+            Configuration configuration,
+            TId? startPosition = null)
             : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
         {
             // If start position is provided, set Current to that entry

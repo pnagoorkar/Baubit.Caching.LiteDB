@@ -48,8 +48,9 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
                 PersistPositionEveryXMoves = 1  // Enable persistence for this test
             };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var database = new LiteDatabase(dbPath);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -68,7 +69,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
             await enumerator.DisposeAsync();
 
             // Assert - Check position was saved
-            var positionCollection = StoreTestHelper.GetDatabase(store).GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
+            var positionCollection = database.GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
             var savedPosition = positionCollection.FindById("test-session");
             Assert.NotNull(savedPosition);
             Assert.Equal(entry1.Id, savedPosition.CurrentId);
@@ -86,8 +87,9 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
                 PersistPositionEveryXMoves = 1  // Enable persistence for this test
             };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var database = new LiteDatabase(dbPath);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -107,7 +109,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
             await enumerator.DisposeAsync();
 
             // Assert - Check second position was saved
-            var positionCollection = StoreTestHelper.GetDatabase(store).GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
+            var positionCollection = database.GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
             var savedPosition = positionCollection.FindById("test-session");
             Assert.NotNull(savedPosition);
             Assert.Equal(entry2.Id, savedPosition.CurrentId);
@@ -121,8 +123,9 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
             var config = new Configuration { ResumeSession = false };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var database = new LiteDatabase(dbPath);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -157,8 +160,9 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
                 PersistPositionEveryXMoves = 3 // Only persist every 3 moves
             };
             
-            using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
+            using var database = new LiteDatabase(dbPath);
+            using var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -174,7 +178,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
             await enumerator.MoveNextAsync(); // Move 1
             await enumerator.MoveNextAsync(); // Move 2
             
-            var positionCollection = StoreTestHelper.GetDatabase(store).GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
+            var positionCollection = database.GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
             var savedPosition1 = positionCollection.FindById("test-session");
             Assert.Null(savedPosition1); // Should not be saved yet
 

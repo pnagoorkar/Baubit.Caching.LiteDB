@@ -94,10 +94,16 @@ namespace Baubit.Caching.LiteDB
         }
 
         /// <summary>
-        /// Disposes the enumerator and optionally cleans up persisted position.
+        /// Disposes the enumerator and persists position one last time before cleanup.
         /// </summary>
         public override async ValueTask DisposeAsync()
         {
+            // Persist one last time before disposal if persistence is enabled
+            if (_configuration.PersistPositionEveryXMoves > 0 && Current != null)
+            {
+                PersistPosition();
+            }
+
             // Call base dispose
             await base.DisposeAsync().ConfigureAwait(false);
         }

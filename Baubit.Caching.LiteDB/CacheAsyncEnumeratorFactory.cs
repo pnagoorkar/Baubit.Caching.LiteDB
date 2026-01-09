@@ -63,17 +63,9 @@ namespace Baubit.Caching.LiteDB
                 }
             }
 
-            // Create enumerator with or without start position
-            if (startPosition.HasValue)
-            {
-                return new CacheAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, startPosition, cancellationToken, _positionCollection, _configuration);
-            }
-            else
-            {
-                return new CacheAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, cancellationToken, _positionCollection, _configuration);
-            }
+            // Create enumerator with optional start position
+            return new CacheAsyncEnumerator<TId, TValue>(
+                cache, onDispose, id, cancellationToken, _positionCollection, _configuration, startPosition);
         }
 
         /// <summary>
