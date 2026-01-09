@@ -14,7 +14,8 @@ namespace Baubit.Caching.LiteDB
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
         /// <summary>
-        /// Creates a new future cache async enumerator starting from the end of the cache.
+        /// Creates a new future cache async enumerator.
+        /// If startPosition is provided, starts from that position; otherwise starts from the end of the cache.
         /// </summary>
         /// <param name="cache">The ordered cache to enumerate.</param>
         /// <param name="onDispose">Action to invoke on dispose.</param>
@@ -22,40 +23,15 @@ namespace Baubit.Caching.LiteDB
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
         /// <param name="configuration">Configuration with persistence settings.</param>
+        /// <param name="startPosition">Optional position to start enumeration from. If null, starts from the end.</param>
         public CacheFutureAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
             string id,
             CancellationToken cancellationToken,
             ILiteCollection<EnumeratorPosition<TId>> positionCollection,
-            Configuration configuration)
-            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
-        {
-            // Initialize Current to last entry like Baubit.Caching.CacheFutureAsyncEnumerator does
-            if (cache.GetLastOrDefault(out var lastEntry) && lastEntry != null)
-            {
-                Current = lastEntry;
-            }
-        }
-
-        /// <summary>
-        /// Creates a new future cache async enumerator starting from a specific position.
-        /// </summary>
-        /// <param name="cache">The ordered cache to enumerate.</param>
-        /// <param name="onDispose">Action to invoke on dispose.</param>
-        /// <param name="id">Unique identifier for this enumeration session.</param>
-        /// <param name="startPosition">The position to start enumeration from.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
-        /// <param name="configuration">Configuration with persistence settings.</param>
-        internal CacheFutureAsyncEnumerator(
-            IOrderedCache<TId, TValue> cache,
-            Action<ICacheEnumerator<TId>> onDispose,
-            string id,
-            TId? startPosition,
-            CancellationToken cancellationToken,
-            ILiteCollection<EnumeratorPosition<TId>> positionCollection,
-            Configuration configuration)
+            Configuration configuration,
+            TId? startPosition = null)
             : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
         {
             // If start position is provided, set Current to that entry
@@ -64,6 +40,15 @@ namespace Baubit.Caching.LiteDB
                 if (cache.GetEntryOrDefault(startPosition.Value, out var entry) && entry != null)
                 {
                     Current = entry;
+                }
+            }
+            
+            // If Current is still null, initialize it to the tail
+            if (Current == null)
+            {
+                if (cache.GetLastOrDefault(out var lastEntry) && lastEntry != null)
+                {
+                    Current = lastEntry;
                 }
             }
         }

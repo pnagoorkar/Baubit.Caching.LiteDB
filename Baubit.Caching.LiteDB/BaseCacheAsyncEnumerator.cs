@@ -49,21 +49,25 @@ namespace Baubit.Caching.LiteDB
         /// <returns>True if the enumerator was successfully advanced to the next element; false if the end has been reached.</returns>
         public override async ValueTask<bool> MoveNextAsync()
         {
-            // Increment move counter
-            _movesSinceLastPersist++;
-
-            // Persist BEFORE moving if configured to do so
-            if (!_configuration.PersistPositionAfterMove && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
+            // Skip persistence logic if PersistPositionEveryXMoves is 0
+            if (_configuration.PersistPositionEveryXMoves > 0)
             {
-                PersistPosition();
-                _movesSinceLastPersist = 0;
+                // Increment move counter
+                _movesSinceLastPersist++;
+
+                // Persist BEFORE moving if configured to do so
+                if (!_configuration.PersistPositionAfterMove && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
+                {
+                    PersistPosition();
+                    _movesSinceLastPersist = 0;
+                }
             }
 
             // Call base implementation to move to next element
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
             // Persist AFTER moving if configured to do so (default behavior)
-            if (_configuration.PersistPositionAfterMove && result && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
+            if (_configuration.PersistPositionEveryXMoves > 0 && _configuration.PersistPositionAfterMove && result && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
             {
                 PersistPosition();
                 _movesSinceLastPersist = 0;

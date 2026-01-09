@@ -45,7 +45,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheFutureAsyncEnumerator
             var config = new Configuration { ResumeSession = false };
             
             using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(store.Database, config);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -66,7 +66,7 @@ namespace Baubit.Caching.LiteDB.Test.CacheFutureAsyncEnumerator
             var config = new Configuration { ResumeSession = false };
             
             using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(store.Database, config);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
@@ -89,16 +89,20 @@ namespace Baubit.Caching.LiteDB.Test.CacheFutureAsyncEnumerator
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration { ResumeSession = true };
+            var config = new Configuration 
+            { 
+                ResumeSession = true,
+                PersistPositionEveryXMoves = 1  // Enable persistence for this test
+            };
             
             using var store = new StoreGuid<string>(dbPath, "test", identityGenerator, _loggerFactory);
-            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(store.Database, config);
+            var factory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(store), config);
             
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             using var cache = new Baubit.Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory);
 
             // Pre-save a position
-            var positionCollection = store.Database.GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
+            var positionCollection = StoreTestHelper.GetDatabase(store).GetCollection<EnumeratorPosition<Guid>>("_enumerator_positions");
             cache.Add("first", out var entry1);
             positionCollection.Insert(new EnumeratorPosition<Guid>("test-future", entry1.Id));
 

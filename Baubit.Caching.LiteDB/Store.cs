@@ -24,7 +24,7 @@ namespace Baubit.Caching.LiteDB
         /// This database should be shared with the CacheAsyncEnumeratorFactory to ensure
         /// enumerator positions are persisted to the same database file as store entries.
         /// </summary>
-        public LiteDatabase Database => _database;
+        internal LiteDatabase Database => _database;
 
         /// <summary>
         /// Gets or sets the last ID that was added to the store.

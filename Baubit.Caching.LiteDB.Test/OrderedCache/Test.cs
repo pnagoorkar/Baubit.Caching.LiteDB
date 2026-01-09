@@ -59,7 +59,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 : null;
 
             // Create enumerator factory using the same database as the store
-            var enumeratorFactory = new CacheAsyncEnumeratorFactory<Guid, string>(l2Store.Database, config);
+            var enumeratorFactory = new CacheAsyncEnumeratorFactory<Guid, string>(StoreTestHelper.GetDatabase(l2Store), config);
 
             return new Caching.OrderedCache<Guid, string>(config, l1Store, l2Store, metadata, _loggerFactory, null, enumeratorFactory);
         }

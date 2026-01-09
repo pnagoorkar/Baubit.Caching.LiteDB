@@ -31,13 +31,13 @@ namespace Baubit.Caching.LiteDB.Test.ConfigurationTest
         }
 
         [Fact]
-        public void Configuration_PersistPositionEveryXMoves_DefaultIsOne()
+        public void Configuration_PersistPositionEveryXMoves_DefaultIsZero()
         {
             // Arrange & Act
             var config = new Baubit.Caching.LiteDB.Configuration();
 
             // Assert
-            Assert.Equal(1, config.PersistPositionEveryXMoves);
+            Assert.Equal(0, config.PersistPositionEveryXMoves);
         }
 
         [Fact]
