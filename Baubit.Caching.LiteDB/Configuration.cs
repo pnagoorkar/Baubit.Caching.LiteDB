@@ -24,8 +24,8 @@ namespace Baubit.Caching.LiteDB
 
         /// <summary>
         /// Gets or sets whether to persist position before moving to next entry.
-        /// When true (default): persists BEFORE moving (better performance, but may lose last entry on crash).
-        /// When false: persists AFTER moving (better reliability, position always reflects last successfully read entry).
+        /// When true (default): persists BEFORE moving (may lose last entry if application crashes before reading it).
+        /// When false: persists AFTER moving (position always reflects last successfully read entry, better crash recovery).
         /// </summary>
         public bool PersistPositionBeforeMove { get; set; } = true;
     }

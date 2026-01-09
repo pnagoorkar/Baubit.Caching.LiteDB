@@ -26,8 +26,9 @@ namespace Baubit.Caching.LiteDB
 
         /// <summary>
         /// Gets whether it's time to persist based on move count.
+        /// Only call when IsPersistenceEnabled is true to avoid division by zero.
         /// </summary>
-        private bool ShouldPersist => _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
+        private bool ShouldPersist => IsPersistenceEnabled && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
 
         /// <summary>
         /// Creates a new base cache async enumerator with position persistence.
@@ -75,8 +76,8 @@ namespace Baubit.Caching.LiteDB
             // Call base implementation to move to next element
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
-            // Persist AFTER moving if configured to do so (default behavior)
-            if (IsPersistenceEnabled && !_configuration.PersistPositionBeforeMove && result && ShouldPersist)
+            // Persist AFTER moving if configured to do so
+            if (!_configuration.PersistPositionBeforeMove && result && ShouldPersist)
             {
                 PersistPosition();
                 _movesSinceLastPersist = 0;
