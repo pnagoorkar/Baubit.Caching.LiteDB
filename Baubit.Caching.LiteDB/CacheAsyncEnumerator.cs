@@ -24,6 +24,7 @@ namespace Baubit.Caching.LiteDB
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
         /// <param name="configuration">Configuration with persistence settings.</param>
         /// <param name="startPosition">Optional position to start enumeration from. If null, starts from the beginning.</param>
+        /// <param name="utcNow">Function to get current UTC time. Defaults to DateTime.UtcNow if not provided.</param>
         public CacheAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
@@ -31,8 +32,9 @@ namespace Baubit.Caching.LiteDB
             CancellationToken cancellationToken,
             ILiteCollection<EnumeratorPosition<TId>> positionCollection,
             Configuration configuration,
-            TId? startPosition = null)
-            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
+            TId? startPosition = null,
+            Func<DateTime> utcNow = null)
+            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration, utcNow)
         {
             // If start position is provided, set Current to that entry
             if (startPosition.HasValue)

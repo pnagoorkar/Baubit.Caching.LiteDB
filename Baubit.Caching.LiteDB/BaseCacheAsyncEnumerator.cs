@@ -17,6 +17,7 @@ namespace Baubit.Caching.LiteDB
         private readonly ILiteCollection<EnumeratorPosition<TId>> _positionCollection;
         private readonly Configuration _configuration;
         private readonly string _id;
+        private readonly Func<DateTime> _utcNow;
         private int _movesSinceLastPersist;
 
         /// <summary>
@@ -31,6 +32,16 @@ namespace Baubit.Caching.LiteDB
         private bool ShouldPersist => IsPersistenceEnabled && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
 
         /// <summary>
+        /// Gets whether to persist before the move operation.
+        /// </summary>
+        private bool ShouldPersistBefore => IsPersistenceEnabled && _configuration.PersistPositionBeforeMove && ShouldPersist;
+
+        /// <summary>
+        /// Gets whether to persist after the move operation.
+        /// </summary>
+        private bool ShouldPersistAfter => IsPersistenceEnabled && !_configuration.PersistPositionBeforeMove && ShouldPersist;
+
+        /// <summary>
         /// Creates a new base cache async enumerator with position persistence.
         /// </summary>
         /// <param name="cache">The ordered cache to enumerate.</param>
@@ -39,18 +50,21 @@ namespace Baubit.Caching.LiteDB
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
         /// <param name="configuration">Configuration with persistence settings.</param>
+        /// <param name="utcNow">Function to get current UTC time. Defaults to DateTime.UtcNow if not provided.</param>
         protected BaseCacheAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
             string id,
             CancellationToken cancellationToken,
             ILiteCollection<EnumeratorPosition<TId>> positionCollection,
-            Configuration configuration)
+            Configuration configuration,
+            Func<DateTime> utcNow = null)
             : base(cache, onDispose, id, cancellationToken)
         {
             _positionCollection = positionCollection ?? throw new ArgumentNullException(nameof(positionCollection));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _id = id;
+            _utcNow = utcNow ?? (() => DateTime.UtcNow);
             _movesSinceLastPersist = 0;
         }
 
@@ -60,28 +74,13 @@ namespace Baubit.Caching.LiteDB
         /// <returns>True if the enumerator was successfully advanced to the next element; false if the end has been reached.</returns>
         public override async ValueTask<bool> MoveNextAsync()
         {
-            // Increment move counter if persistence is enabled
-            if (IsPersistenceEnabled)
-            {
-                _movesSinceLastPersist++;
+            if (ShouldPersistBefore) PersistPosition();
 
-                // Persist BEFORE moving if configured to do so
-                if (_configuration.PersistPositionBeforeMove && ShouldPersist)
-                {
-                    PersistPosition();
-                    _movesSinceLastPersist = 0;
-                }
-            }
-
-            // Call base implementation to move to next element
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
-            // Persist AFTER moving if configured to do so
-            if (!_configuration.PersistPositionBeforeMove && result && ShouldPersist)
-            {
-                PersistPosition();
-                _movesSinceLastPersist = 0;
-            }
+            if (IsPersistenceEnabled) _movesSinceLastPersist++;
+
+            if (ShouldPersistAfter) PersistPosition();
 
             return result;
         }
@@ -93,13 +92,11 @@ namespace Baubit.Caching.LiteDB
         {
             if (Current != null)
             {
-                var position = new EnumeratorPosition<TId>(_id, Current.Id)
-                {
-                    LastUpdatedUTC = DateTime.UtcNow
-                };
+                var position = new EnumeratorPosition<TId>(_id, Current.Id, _utcNow());
 
                 // Upsert: Insert if doesn't exist, update if exists
                 _positionCollection.Upsert(position);
+                _movesSinceLastPersist = 0;
             }
         }
 

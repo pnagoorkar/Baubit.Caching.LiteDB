@@ -157,7 +157,8 @@ namespace Baubit.Caching.LiteDB.Test.CacheAsyncEnumerator
             var config = new Configuration 
             { 
                 ResumeSession = true,
-                PersistPositionEveryXMoves = 3 // Only persist every 3 moves
+                PersistPositionEveryXMoves = 3, // Only persist every 3 moves
+                PersistPositionBeforeMove = false // Persist after move for this test
             };
             
             using var database = new LiteDatabase(dbPath);
