@@ -281,7 +281,6 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            using var database = new LiteDatabase(dbPath);
             Guid entryId;
             string entryValue = "persisted value";
 
