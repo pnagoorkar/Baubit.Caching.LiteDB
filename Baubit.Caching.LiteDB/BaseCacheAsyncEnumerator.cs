@@ -78,7 +78,7 @@ namespace Baubit.Caching.LiteDB
 
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
-            if (IsPersistenceEnabled) _movesSinceLastPersist++;
+            if (result && IsPersistenceEnabled) _movesSinceLastPersist++;
 
             if (result && ShouldPersistAfter) PersistPosition();
 
