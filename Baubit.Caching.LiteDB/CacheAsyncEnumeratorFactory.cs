@@ -8,6 +8,7 @@ namespace Baubit.Caching.LiteDB
     /// <summary>
     /// Factory for creating cache async enumerators with LiteDB persistence support.
     /// Implements session resume functionality by checking for saved positions in LiteDB.
+    /// Uses the same database as the store for position persistence.
     /// </summary>
     /// <typeparam name="TId">The type of the unique identifier.</typeparam>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
@@ -20,9 +21,10 @@ namespace Baubit.Caching.LiteDB
 
         /// <summary>
         /// Creates a new cache async enumerator factory with the specified LiteDB database.
+        /// Enumerator positions will be persisted to the same database in a separate collection.
         /// </summary>
-        /// <param name="database">The LiteDB database for storing enumerator positions.</param>
-        /// <param name="configuration">Configuration with ResumeSession setting.</param>
+        /// <param name="database">The LiteDB database for storing enumerator positions (same as store database).</param>
+        /// <param name="configuration">Configuration with ResumeSession and persistence settings.</param>
         public CacheAsyncEnumeratorFactory(LiteDatabase database, Configuration configuration)
         {
             if (database == null)
@@ -30,30 +32,7 @@ namespace Baubit.Caching.LiteDB
             
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _positionCollection = database.GetCollection<EnumeratorPosition<TId>>(PositionCollectionName);
-            _positionCollection.EnsureIndex(x => x.Id, unique: true);
-        }
-
-        /// <summary>
-        /// Creates a new cache async enumerator factory with the specified database path.
-        /// </summary>
-        /// <param name="databasePath">Path to the LiteDB database file.</param>
-        /// <param name="configuration">Configuration with ResumeSession setting.</param>
-        /// <param name="database">Output parameter for the created database (caller owns disposal).</param>
-        public CacheAsyncEnumeratorFactory(string databasePath, Configuration configuration, out LiteDatabase database)
-        {
-            if (string.IsNullOrEmpty(databasePath))
-                throw new ArgumentNullException(nameof(databasePath));
-
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            
-            database = new LiteDatabase(new ConnectionString
-            {
-                Filename = databasePath,
-                Upgrade = true
-            });
-            
-            _positionCollection = database.GetCollection<EnumeratorPosition<TId>>(PositionCollectionName);
-            _positionCollection.EnsureIndex(x => x.Id, unique: true);
+            // SessionId is marked with BsonId attribute, so no need for explicit index
         }
 
         /// <summary>
@@ -88,12 +67,12 @@ namespace Baubit.Caching.LiteDB
             if (startPosition.HasValue)
             {
                 return new CacheAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, startPosition, cancellationToken, _positionCollection);
+                    cache, onDispose, id, startPosition, cancellationToken, _positionCollection, _configuration);
             }
             else
             {
                 return new CacheAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, cancellationToken, _positionCollection);
+                    cache, onDispose, id, cancellationToken, _positionCollection, _configuration);
             }
         }
 
@@ -129,12 +108,12 @@ namespace Baubit.Caching.LiteDB
             if (startPosition.HasValue)
             {
                 return new CacheFutureAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, startPosition, cancellationToken, _positionCollection);
+                    cache, onDispose, id, startPosition, cancellationToken, _positionCollection, _configuration);
             }
             else
             {
                 return new CacheFutureAsyncEnumerator<TId, TValue>(
-                    cache, onDispose, id, cancellationToken, _positionCollection);
+                    cache, onDispose, id, cancellationToken, _positionCollection, _configuration);
             }
         }
     }

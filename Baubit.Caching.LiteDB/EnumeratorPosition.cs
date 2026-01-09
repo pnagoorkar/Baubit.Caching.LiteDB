@@ -1,4 +1,5 @@
 using System;
+using LiteDB;
 
 namespace Baubit.Caching.LiteDB
 {
@@ -13,8 +14,10 @@ namespace Baubit.Caching.LiteDB
         /// <summary>
         /// Gets or sets the unique identifier for this enumerator session.
         /// This is the Id parameter passed to the enumerator factory.
+        /// BsonId attribute marks this as the document ID for LiteDB.
         /// </summary>
-        public string Id { get; set; }
+        [BsonId]
+        public string SessionId { get; set; }
 
         /// <summary>
         /// Gets or sets the current position (entry ID) in the enumeration.
@@ -38,11 +41,11 @@ namespace Baubit.Caching.LiteDB
         /// <summary>
         /// Creates a new enumerator position.
         /// </summary>
-        /// <param name="id">The enumerator session ID.</param>
+        /// <param name="sessionId">The enumerator session ID.</param>
         /// <param name="currentId">The current position in enumeration.</param>
-        public EnumeratorPosition(string id, TId? currentId)
+        public EnumeratorPosition(string sessionId, TId? currentId)
         {
-            Id = id;
+            SessionId = sessionId;
             CurrentId = currentId;
             LastUpdatedUTC = DateTime.UtcNow;
         }

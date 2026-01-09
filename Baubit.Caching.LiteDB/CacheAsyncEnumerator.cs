@@ -21,13 +21,15 @@ namespace Baubit.Caching.LiteDB
         /// <param name="id">Unique identifier for this enumeration session.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
+        /// <param name="configuration">Configuration with persistence settings.</param>
         public CacheAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
             string id,
             CancellationToken cancellationToken,
-            ILiteCollection<EnumeratorPosition<TId>> positionCollection)
-            : base(cache, onDispose, id, cancellationToken, positionCollection)
+            ILiteCollection<EnumeratorPosition<TId>> positionCollection,
+            Configuration configuration)
+            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
         {
         }
 
@@ -40,14 +42,16 @@ namespace Baubit.Caching.LiteDB
         /// <param name="startPosition">The position to start enumeration from.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <param name="positionCollection">LiteDB collection for persisting positions.</param>
+        /// <param name="configuration">Configuration with persistence settings.</param>
         internal CacheAsyncEnumerator(
             IOrderedCache<TId, TValue> cache,
             Action<ICacheEnumerator<TId>> onDispose,
             string id,
             TId? startPosition,
             CancellationToken cancellationToken,
-            ILiteCollection<EnumeratorPosition<TId>> positionCollection)
-            : base(cache, onDispose, id, cancellationToken, positionCollection)
+            ILiteCollection<EnumeratorPosition<TId>> positionCollection,
+            Configuration configuration)
+            : base(cache, onDispose, id, cancellationToken, positionCollection, configuration)
         {
             // If start position is provided, set Current to that entry
             if (startPosition.HasValue)

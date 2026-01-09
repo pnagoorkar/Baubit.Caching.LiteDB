@@ -39,11 +39,11 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
         }
 
         private Caching.OrderedCache<Guid, string> CreateTestCache(
-            Caching.Configuration? config = null,
+            Baubit.Caching.LiteDB.Configuration? config = null,
             long? l1MinCap = null,
             long? l1MaxCap = null)
         {
-            config ??= new Caching.Configuration();
+            config ??= new Baubit.Caching.LiteDB.Configuration();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, NullLoggerFactory.Instance);
             var dbPath = GetTempDbPath();
@@ -58,7 +58,10 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                     _loggerFactory) 
                 : null;
 
-            return new Caching.OrderedCache<Guid, string>(config, l1Store, l2Store, metadata, _loggerFactory);
+            // Create enumerator factory using the same database as the store
+            var enumeratorFactory = new CacheAsyncEnumeratorFactory<Guid, string>(l2Store.Database, config);
+
+            return new Caching.OrderedCache<Guid, string>(config, l1Store, l2Store, metadata, _loggerFactory, null, enumeratorFactory);
         }
 
         [Fact]
@@ -302,7 +305,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
         public async Task OrderedCache_ConcurrentAdd_AllSucceed()
         {
             // Arrange
-            var config = new Caching.Configuration { EvictAfterEveryX = int.MaxValue };
+            var config = new Baubit.Caching.LiteDB.Configuration { EvictAfterEveryX = int.MaxValue };
             using var cache = CreateTestCache(config: config);
             const int threadCount = 10;
             const int itemsPerThread = 50;
@@ -335,7 +338,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
         public async Task OrderedCache_ConcurrentRead_AllSucceed()
         {
             // Arrange
-            var config = new Caching.Configuration { EvictAfterEveryX = int.MaxValue };
+            var config = new Baubit.Caching.LiteDB.Configuration { EvictAfterEveryX = int.MaxValue };
             using var cache = CreateTestCache(config: config);
             // Pre-populate cache
             var entries = new List<IEntry<Guid, string>>();

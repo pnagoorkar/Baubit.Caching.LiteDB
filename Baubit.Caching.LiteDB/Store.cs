@@ -20,6 +20,13 @@ namespace Baubit.Caching.LiteDB
         private TId? lastGeneratedId;
 
         /// <summary>
+        /// Gets the LiteDatabase instance used by this store.
+        /// This database should be shared with the CacheAsyncEnumeratorFactory to ensure
+        /// enumerator positions are persisted to the same database file as store entries.
+        /// </summary>
+        public LiteDatabase Database => _database;
+
+        /// <summary>
         /// Gets or sets the last ID that was added to the store.
         /// Used to maintain ID continuity across store operations.
         /// </summary>
