@@ -80,7 +80,7 @@ namespace Baubit.Caching.LiteDB
 
             if (IsPersistenceEnabled) _movesSinceLastPersist++;
 
-            if (ShouldPersistAfter) PersistPosition();
+            if (result && ShouldPersistAfter) PersistPosition();
 
             return result;
         }
