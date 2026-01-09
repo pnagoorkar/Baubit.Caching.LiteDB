@@ -26,7 +26,7 @@ namespace Baubit.Caching.LiteDB
 
         /// <summary>
         /// Gets whether it's time to persist based on move count.
-        /// Only call when IsPersistenceEnabled is true to avoid division by zero.
+        /// Includes guard for when persistence is disabled to avoid division by zero.
         /// </summary>
         private bool ShouldPersist => IsPersistenceEnabled && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
 
