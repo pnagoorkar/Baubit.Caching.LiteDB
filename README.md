@@ -39,7 +39,7 @@ var storeGuid = new StoreGuid<string>("cache.db", "guidCollection", loggerFactor
 storeGuid.Add("value", out var entry);
 
 // Resumable enumeration
-var database = new LiteDatabase("cache.db");
+using var database = new LiteDatabase("cache.db");
 var config = new Baubit.Caching.LiteDB.Configuration 
 { 
     ResumeSession = true,
