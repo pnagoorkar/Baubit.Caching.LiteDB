@@ -54,26 +54,26 @@ namespace Baubit.Caching.LiteDB.Test.ConfigurationTest
         }
 
         [Fact]
-        public void Configuration_PersistPositionAfterMove_DefaultIsTrue()
+        public void Configuration_PersistPositionBeforeMove_DefaultIsTrue()
         {
             // Arrange & Act
             var config = new Baubit.Caching.LiteDB.Configuration();
 
             // Assert
-            Assert.True(config.PersistPositionAfterMove);
+            Assert.True(config.PersistPositionBeforeMove);
         }
 
         [Fact]
-        public void Configuration_PersistPositionAfterMove_CanBeSet()
+        public void Configuration_PersistPositionBeforeMove_CanBeSet()
         {
             // Arrange
             var config = new Baubit.Caching.LiteDB.Configuration();
 
             // Act
-            config.PersistPositionAfterMove = false;
+            config.PersistPositionBeforeMove = false;
 
             // Assert
-            Assert.False(config.PersistPositionAfterMove);
+            Assert.False(config.PersistPositionBeforeMove);
         }
 
         [Fact]

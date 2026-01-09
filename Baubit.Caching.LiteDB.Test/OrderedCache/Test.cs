@@ -412,7 +412,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
-                PersistPositionAfterMove = true
+                PersistPositionBeforeMove = false  // Persist AFTER move
             };
             
             using var database = new LiteDatabase(dbPath);
@@ -467,7 +467,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
-                PersistPositionAfterMove = true
+                PersistPositionBeforeMove = false  // Persist AFTER move
             };
             
             using var database = new LiteDatabase(dbPath);
@@ -572,7 +572,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
-                PersistPositionAfterMove = false  // Persist BEFORE move
+                PersistPositionBeforeMove = true  // Persist BEFORE move
             };
             
             using var database = new LiteDatabase(dbPath);
@@ -624,7 +624,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             { 
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
-                PersistPositionAfterMove = false  // Persist BEFORE move
+                PersistPositionBeforeMove = true  // Persist BEFORE move
             };
             
             using var database = new LiteDatabase(dbPath);

@@ -36,6 +36,24 @@ namespace Baubit.Caching.LiteDB
         }
 
         /// <summary>
+        /// Gets the saved start position for the given session id, if ResumeSession is enabled.
+        /// </summary>
+        /// <param name="id">Unique identifier for this enumeration session.</param>
+        /// <returns>Saved position or null if not found or ResumeSession is disabled.</returns>
+        private TId? GetSavedStartPosition(string id)
+        {
+            if (_configuration.ResumeSession && !string.IsNullOrEmpty(id))
+            {
+                var savedPosition = _positionCollection.FindById(id);
+                if (savedPosition != null)
+                {
+                    return savedPosition.CurrentId;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Creates an async enumerator for the cache.
         /// If ResumeSession is enabled and a saved position exists for the given id,
         /// the enumerator resumes from that position. Otherwise, starts from the beginning.
@@ -51,19 +69,7 @@ namespace Baubit.Caching.LiteDB
             string id,
             CancellationToken cancellationToken)
         {
-            TId? startPosition = null;
-
-            // Check for saved position if ResumeSession is enabled
-            if (_configuration.ResumeSession && !string.IsNullOrEmpty(id))
-            {
-                var savedPosition = _positionCollection.FindById(id);
-                if (savedPosition != null)
-                {
-                    startPosition = savedPosition.CurrentId;
-                }
-            }
-
-            // Create enumerator with optional start position
+            var startPosition = GetSavedStartPosition(id);
             return new CacheAsyncEnumerator<TId, TValue>(
                 cache, onDispose, id, cancellationToken, _positionCollection, _configuration, startPosition);
         }
@@ -84,19 +90,7 @@ namespace Baubit.Caching.LiteDB
             string id,
             CancellationToken cancellationToken)
         {
-            TId? startPosition = null;
-
-            // Check for saved position if ResumeSession is enabled
-            if (_configuration.ResumeSession && !string.IsNullOrEmpty(id))
-            {
-                var savedPosition = _positionCollection.FindById(id);
-                if (savedPosition != null)
-                {
-                    startPosition = savedPosition.CurrentId;
-                }
-            }
-
-            // Create future enumerator with optional start position
+            var startPosition = GetSavedStartPosition(id);
             return new CacheFutureAsyncEnumerator<TId, TValue>(
                 cache, onDispose, id, cancellationToken, _positionCollection, _configuration, startPosition);
         }

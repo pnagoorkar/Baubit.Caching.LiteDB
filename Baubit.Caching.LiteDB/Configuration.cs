@@ -23,10 +23,10 @@ namespace Baubit.Caching.LiteDB
         public int PersistPositionEveryXMoves { get; set; } = 0;
 
         /// <summary>
-        /// Gets or sets whether to persist position before or after moving to next entry.
-        /// When true (default): persists AFTER moving (better reliability, position always reflects last successfully read entry).
-        /// When false: persists BEFORE moving (better performance, but may lose last entry on crash).
+        /// Gets or sets whether to persist position before moving to next entry.
+        /// When true (default): persists BEFORE moving (better performance, but may lose last entry on crash).
+        /// When false: persists AFTER moving (better reliability, position always reflects last successfully read entry).
         /// </summary>
-        public bool PersistPositionAfterMove { get; set; } = true;
+        public bool PersistPositionBeforeMove { get; set; } = true;
     }
 }

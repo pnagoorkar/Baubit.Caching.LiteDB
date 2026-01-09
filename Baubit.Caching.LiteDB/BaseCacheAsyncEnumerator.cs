@@ -20,6 +20,16 @@ namespace Baubit.Caching.LiteDB
         private int _movesSinceLastPersist;
 
         /// <summary>
+        /// Gets whether persistence is enabled (PersistPositionEveryXMoves > 0).
+        /// </summary>
+        private bool IsPersistenceEnabled => _configuration.PersistPositionEveryXMoves > 0;
+
+        /// <summary>
+        /// Gets whether it's time to persist based on move count.
+        /// </summary>
+        private bool ShouldPersist => _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
+
+        /// <summary>
         /// Creates a new base cache async enumerator with position persistence.
         /// </summary>
         /// <param name="cache">The ordered cache to enumerate.</param>
@@ -49,14 +59,13 @@ namespace Baubit.Caching.LiteDB
         /// <returns>True if the enumerator was successfully advanced to the next element; false if the end has been reached.</returns>
         public override async ValueTask<bool> MoveNextAsync()
         {
-            // Skip persistence logic if PersistPositionEveryXMoves is 0
-            if (_configuration.PersistPositionEveryXMoves > 0)
+            // Increment move counter if persistence is enabled
+            if (IsPersistenceEnabled)
             {
-                // Increment move counter
                 _movesSinceLastPersist++;
 
                 // Persist BEFORE moving if configured to do so
-                if (!_configuration.PersistPositionAfterMove && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
+                if (_configuration.PersistPositionBeforeMove && ShouldPersist)
                 {
                     PersistPosition();
                     _movesSinceLastPersist = 0;
@@ -67,7 +76,7 @@ namespace Baubit.Caching.LiteDB
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
             // Persist AFTER moving if configured to do so (default behavior)
-            if (_configuration.PersistPositionEveryXMoves > 0 && _configuration.PersistPositionAfterMove && result && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves)
+            if (IsPersistenceEnabled && !_configuration.PersistPositionBeforeMove && result && ShouldPersist)
             {
                 PersistPosition();
                 _movesSinceLastPersist = 0;
@@ -99,7 +108,7 @@ namespace Baubit.Caching.LiteDB
         public override async ValueTask DisposeAsync()
         {
             // Persist one last time before disposal if persistence is enabled
-            if (_configuration.PersistPositionEveryXMoves > 0 && Current != null)
+            if (IsPersistenceEnabled && Current != null)
             {
                 PersistPosition();
             }
