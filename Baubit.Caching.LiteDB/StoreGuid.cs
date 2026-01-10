@@ -11,8 +11,75 @@ namespace Baubit.Caching.LiteDB
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
     public class StoreGuid<TValue> : Store<Guid, TValue>
     {
-        private readonly Baubit.Identity.IIdentityGenerator identityGenerator;
+        /// <summary>
+        /// Creates a new LiteDB-backed store with the specified database path and custom ID factory.
+        /// </summary>
+        /// <param name="databasePath">Path to the LiteDB database file.</param>
+        /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="minCap">Minimum capacity (null for uncapped).</param>
+        /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
+        /// <param name="loggerFactory">Logger factory for creating loggers.</param>
+        public StoreGuid(string databasePath,
+                     string collectionName,
+                     long? minCap,
+                     long? maxCap,
+                     Func<Guid?, Guid?> nextIdFactory,
+                     ILoggerFactory loggerFactory)
+            : base(databasePath, collectionName, minCap, maxCap, nextIdFactory, loggerFactory)
+        {
+        }
 
+        /// <summary>
+        /// Creates a new uncapped LiteDB-backed store with the specified database path and custom ID factory.
+        /// </summary>
+        /// <param name="databasePath">Path to the LiteDB database file.</param>
+        /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
+        /// <param name="loggerFactory">Logger factory for creating loggers.</param>
+        public StoreGuid(string databasePath,
+                     string collectionName,
+                     Func<Guid?, Guid?> nextIdFactory,
+                     ILoggerFactory loggerFactory)
+            : base(databasePath, collectionName, nextIdFactory, loggerFactory)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new LiteDB-backed store using an existing database instance and custom ID factory.
+        /// </summary>
+        /// <param name="database">Existing LiteDB database instance.</param>
+        /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="minCap">Minimum capacity (null for uncapped).</param>
+        /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
+        /// <param name="loggerFactory">Logger factory for creating loggers.</param>
+        public StoreGuid(LiteDatabase database,
+                     string collectionName,
+                     long? minCap,
+                     long? maxCap,
+                     Func<Guid?, Guid?> nextIdFactory,
+                     ILoggerFactory loggerFactory)
+            : base(database, collectionName, minCap, maxCap, nextIdFactory, loggerFactory)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new uncapped LiteDB-backed store using an existing database instance and custom ID factory.
+        /// </summary>
+        /// <param name="database">Existing LiteDB database instance.</param>
+        /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
+        /// <param name="loggerFactory">Logger factory for creating loggers.</param>
+        public StoreGuid(LiteDatabase database,
+                     string collectionName,
+                     Func<Guid?, Guid?> nextIdFactory,
+                     ILoggerFactory loggerFactory)
+            : base(database, collectionName, nextIdFactory, loggerFactory)
+        {
+        }
+
+        // Constructors with identityGenerator for backward compatibility
         /// <summary>
         /// Creates a new LiteDB-backed store with the specified database path.
         /// </summary>
@@ -28,9 +95,8 @@ namespace Baubit.Caching.LiteDB
                      long? maxCap,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
-            : base(databasePath, collectionName, minCap, maxCap, loggerFactory)
+            : base(databasePath, collectionName, minCap, maxCap, CreateNextIdFactory(identityGenerator), loggerFactory)
         {
-            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -44,9 +110,8 @@ namespace Baubit.Caching.LiteDB
                      string collectionName,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
-            : base(databasePath, collectionName, loggerFactory)
+            : base(databasePath, collectionName, CreateNextIdFactory(identityGenerator), loggerFactory)
         {
-            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -64,9 +129,8 @@ namespace Baubit.Caching.LiteDB
                      long? maxCap,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
-            : base(database, collectionName, minCap, maxCap, loggerFactory)
+            : base(database, collectionName, minCap, maxCap, CreateNextIdFactory(identityGenerator), loggerFactory)
         {
-            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         /// <summary>
@@ -80,9 +144,8 @@ namespace Baubit.Caching.LiteDB
                      string collectionName,
                      Baubit.Identity.IIdentityGenerator identityGenerator,
                      ILoggerFactory loggerFactory)
-            : base(database, collectionName, loggerFactory)
+            : base(database, collectionName, CreateNextIdFactory(identityGenerator), loggerFactory)
         {
-            this.identityGenerator = identityGenerator ?? throw new ArgumentNullException(nameof(identityGenerator));
         }
 
         // Backward-compatible constructors without identityGenerator (creates default)
@@ -150,17 +213,23 @@ namespace Baubit.Caching.LiteDB
         {
         }
 
-        /// <inheritdoc/>
-        protected override Guid? GenerateNextId(Guid? lastGeneratedId)
+        /// <summary>
+        /// Creates a nextIdFactory function from an identityGenerator.
+        /// </summary>
+        private static Func<Guid?, Guid?> CreateNextIdFactory(Baubit.Identity.IIdentityGenerator identityGenerator)
         {
-            if (identityGenerator == null) return null;
-            // Initialize from last generated ID if available to ensure monotonicity
-            if (lastGeneratedId.HasValue)
-            {
-                identityGenerator.InitializeFrom(lastGeneratedId.Value);
-            }
+            if (identityGenerator == null)
+                throw new ArgumentNullException(nameof(identityGenerator));
 
-            return identityGenerator.GetNext();
+            return lastGeneratedId =>
+            {
+                // Initialize from last generated ID if available to ensure monotonicity
+                if (lastGeneratedId.HasValue)
+                {
+                    identityGenerator.InitializeFrom(lastGeneratedId.Value);
+                }
+                return identityGenerator.GetNext();
+            };
         }
     }
 }
