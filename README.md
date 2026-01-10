@@ -25,6 +25,7 @@ dotnet add package Baubit.Caching.LiteDB
 - **Performance Optimized**: Numeric IDs (long/int) deliver better performance than Guid - less memory, better cache locality
 - **Persistent Storage**: File-based LiteDB storage for durable caching
 - **Automatic ID Generation**: Built-in GuidV7 generation for `StoreGuid<TValue>` (backward compatible)
+- **Resumable Enumeration**: Resume async enumeration sessions across application restarts with configurable persistence
 - **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
@@ -97,6 +98,46 @@ storeGuid.Add("value", out var entry1);
 // Or provide explicit Guid
 storeGuid.Add(Guid.NewGuid(), "value", out var entry2);
 ```
+
+### Resumable Enumeration
+
+Enumeration sessions can be persisted to LiteDB and resumed after application restarts:
+
+```csharp
+using Baubit.Caching.LiteDB;
+using LiteDB;
+using Microsoft.Extensions.Logging;
+
+// Create database shared between store and enumerator factory
+using var database = new LiteDatabase("cache.db");
+var store = new StoreGuid<string>(database, "myCollection", loggerFactory);
+
+// Configure resumable enumeration
+var config = new Baubit.Caching.LiteDB.Configuration
+{
+    ResumeSession = true,
+    PersistPositionEveryXMoves = 10,  // Persist every 10 moves (0 = disabled)
+    PersistPositionBeforeMove = true  // Persist before move (crash recovery)
+};
+
+var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
+var cache = new OrderedCache<Guid, string>(store, factory, loggerFactory);
+
+// First enumeration session
+var enumerator = factory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
+await enumerator.MoveNextAsync();  // First entry
+await enumerator.MoveNextAsync();  // Second entry
+await enumerator.DisposeAsync();   // Position persisted
+
+// Resume from saved position (even after application restart)
+var enumerator2 = factory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
+await enumerator2.MoveNextAsync();  // Continues from third entry
+```
+
+**Configuration Options:**
+- `ResumeSession` - Enable/disable session resumption (default: false)
+- `PersistPositionEveryXMoves` - Persist every X moves, 0 to disable (default: 0)
+- `PersistPositionBeforeMove` - Persist before move for crash recovery, false for after move (default: true)
 
 ### Creating the Store
 
