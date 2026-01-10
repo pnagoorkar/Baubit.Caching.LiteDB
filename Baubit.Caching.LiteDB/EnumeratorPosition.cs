@@ -25,17 +25,23 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         public TId? CurrentId { get; set; }
 
-        private DateTime _lastUpdatedUTC;
-
         /// <summary>
         /// Gets or sets the UTC timestamp when this position was last updated.
         /// The setter ensures the DateTime.Kind is always UTC.
         /// </summary>
+        [BsonIgnore]
         public DateTime LastUpdatedUTC
         {
-            get => _lastUpdatedUTC;
-            set => _lastUpdatedUTC = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+            get => new DateTime(LastUpdatedUtcTicks, DateTimeKind.Utc);
+            set => LastUpdatedUtcTicks = DateTime.SpecifyKind(value, DateTimeKind.Utc).Ticks;
         }
+
+        /// <summary>
+        /// Gets or sets the ticks value for LastUpdatedUTC.
+        /// Used by LiteDB for serialization to preserve UTC kind.
+        /// </summary>
+        [BsonField(nameof(LastUpdatedUTC))]
+        public long LastUpdatedUtcTicks { get; set; } = DateTime.UtcNow.Ticks;
 
         /// <summary>
         /// Parameterless constructor required for LiteDB serialization.
@@ -43,7 +49,8 @@ namespace Baubit.Caching.LiteDB
         public EnumeratorPosition()
         {
             SessionId = "";
-            LastUpdatedUTC = DateTime.UtcNow;
+            if (LastUpdatedUtcTicks == 0)
+                LastUpdatedUTC = DateTime.UtcNow;
         }
 
         /// <summary>
