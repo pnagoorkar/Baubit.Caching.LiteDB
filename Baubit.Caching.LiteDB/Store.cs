@@ -10,13 +10,14 @@ namespace Baubit.Caching.LiteDB
     /// </summary>
     /// <typeparam name="TId">The type of the unique identifier. Must be a value type that implements IComparable and IEquatable.</typeparam>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public abstract class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
+    public class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
         private readonly LiteDatabase _database;
         private readonly ILiteCollection<Entry<TId, TValue>> _collection;
         private readonly ILogger<Store<TId, TValue>> _logger;
         private readonly bool _ownsDatabase;
+        private readonly Func<TId?, TId?> _nextIdFactory;
         private TId? lastGeneratedId;
 
         /// <summary>
@@ -36,15 +37,18 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(string databasePath,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
+            _nextIdFactory = nextIdFactory ?? throw new ArgumentNullException(nameof(nextIdFactory));
 
             _database = new LiteDatabase(new ConnectionString
             {
@@ -62,11 +66,13 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="databasePath">Path to the LiteDB database file.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(string databasePath,
                      string collectionName,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
-            : this(databasePath, collectionName, null, null, loggerFactory)
+            : this(databasePath, collectionName, null, null, nextIdFactory, loggerFactory)
         {
         }
 
@@ -77,16 +83,19 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(LiteDatabase database,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
             _database = database ?? throw new ArgumentNullException(nameof(database));
+            _nextIdFactory = nextIdFactory ?? throw new ArgumentNullException(nameof(nextIdFactory));
             _ownsDatabase = false;
             _collection = _database.GetCollection<Entry<TId, TValue>>(collectionName);
             _collection.EnsureIndex(x => x.Id, unique: true);
@@ -98,11 +107,13 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="database">Existing LiteDB database instance.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(LiteDatabase database,
                      string collectionName,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
-            : this(database, collectionName, null, null, loggerFactory)
+            : this(database, collectionName, null, null, nextIdFactory, loggerFactory)
         {
         }
 
@@ -151,7 +162,7 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Add(TValue value, out IEntry<TId, TValue> entry)
         {
-            var nextId = GenerateNextId(lastGeneratedId);
+            var nextId = _nextIdFactory(lastGeneratedId);
             if (nextId == null)
             {
                 entry = default;
@@ -160,7 +171,6 @@ namespace Baubit.Caching.LiteDB
             lastGeneratedId = nextId;
             return Add(nextId.Value, value, out entry);
         }
-        protected abstract TId? GenerateNextId(TId? lastGeneratedId);
 
         /// <inheritdoc />
         public override bool GetCount(out long count)

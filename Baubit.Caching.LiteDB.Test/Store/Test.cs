@@ -716,11 +716,12 @@ namespace Baubit.Caching.LiteDB.Test.Store
         }
 
         [Fact]
-        public void Store_Add_WhenGenerateNextIdReturnsNull_Fails()
+        public void Store_Add_WhenNextIdFactoryReturnsNull_Fails()
         {
             // Arrange
             var dbPath = GetTempDbPath();
-            using var store = new TestStoreWithNullIdGenerator(dbPath, "test", _loggerFactory);
+            // Create a store with a nextIdFactory that returns null to test error handling
+            using var store = new StoreInt<string>(dbPath, "test", lastId => null, _loggerFactory);
 
             // Act
             var result = store.Add("test value", out var entry);
@@ -735,24 +736,6 @@ namespace Baubit.Caching.LiteDB.Test.Store
             public string Name { get; set; } = string.Empty;
             public int Count { get; set; }
             public List<string> Items { get; set; } = new List<string>();
-        }
-
-        /// <summary>
-        /// Test store that returns null from GenerateNextId to simulate ID generation failure
-        /// and test error handling in the Add(TValue, out IEntry) method.
-        /// </summary>
-        private class TestStoreWithNullIdGenerator : Baubit.Caching.LiteDB.Store<int, string>
-        {
-            public TestStoreWithNullIdGenerator(string databasePath, string collectionName, ILoggerFactory loggerFactory)
-                : base(databasePath, collectionName, loggerFactory)
-            {
-            }
-
-            protected override int? GenerateNextId(int? lastGeneratedId)
-            {
-                // Simulates ID generation failure to test error handling in Add method
-                return null;
-            }
         }
     }
 }
