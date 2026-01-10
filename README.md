@@ -40,7 +40,7 @@ Benchmarks show numeric IDs (`long`, `int`) deliver better performance than `Gui
 | Operation (ops/sec)             | GuidV7          | Long            | Long advantage |
 |---------------------------------|----------------:|----------------:|---------------:|
 | GetFirstOrDefault               | **14.9M–15.5M** | **19.6M–22.8M** | **+26–53%**    |
-| GetEntryOrDefault               | **81.1k–81.5k** | **82.7k–110.0k**| **+1–36%**     |
+| GetEntryOrDefault               | **81.1k–81.5k** | **82.7k–110.0k** | **+1–36%**     |
 | GetNextOrDefault                | **76.7k–85.3k** | **93.9k–95.9k** | **+10–25%**    |
 | Update                          | **21.8k–25.6k** | **22.4k–30.5k** | **+3–19%**     |
 | Add                             | **12.6k–12.8k** | **17.0k–19.0k** | **+35–49%**    |
