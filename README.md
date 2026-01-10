@@ -11,7 +11,7 @@
 **DI Extension**: [Baubit.Caching.LiteDB.DI](https://github.com/pnagoorkar/Baubit.Caching.LiteDB.DI)  
 **Distributed cache samples**: [Samples](https://github.com/pnagoorkar/Baubit.Caching.DI/tree/master/Samples)
 
-LiteDB-backed L2 store implementation for [Baubit.Caching](https://github.com/pnagoorkar/Baubit.Caching) with support for custom ID types.
+LiteDB-backed L2 store implementation for [Baubit.Caching](https://github.com/pnagoorkar/Baubit.Caching) with support for custom ID types and custom ID generation strategies.
 
 ## Installation
 
@@ -22,16 +22,17 @@ dotnet add package Baubit.Caching.LiteDB
 ## Features
 
 - **Generic ID Support**: Use `long`, `int`, `Guid`, or any value type implementing `IComparable<TId>` and `IEquatable<TId>`
+- **Custom ID Generation**: Provide custom `nextIdFactory` functions for any ID generation strategy
 - **Performance Optimized**: Numeric IDs (long/int) deliver better performance than Guid - less memory, better cache locality
 - **Persistent Storage**: File-based LiteDB storage for durable caching
-- **Automatic ID Generation**: Built-in GuidV7 generation for `StoreGuid<TValue>` (backward compatible)
+- **Default ID Factories**: Built-in sequential generation for int/long, GuidV7 generation for Guid
 - **Resumable Enumeration**: Resume async enumeration sessions across application restarts with configurable persistence
 - **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
 ## Backward Compatibility
 
-The `StoreGuid<TValue>`, `StoreLong<TValue>`, and `StoreInt<TValue>` classes were added to maintain backward compatibility with code written against Baubit.Caching v2025.52+. These classes provide concrete implementations that handle ID generation internally, simplifying usage for common scenarios while the abstract `Store<TId, TValue>` base class enables custom ID type implementations.
+The `StoreGuid<TValue>`, `StoreLong<TValue>`, and `StoreInt<TValue>` classes maintain backward compatibility with existing code. They provide default ID generation strategies while also supporting custom `nextIdFactory` functions for advanced scenarios. The base `Store<TId, TValue>` class requires a `nextIdFactory` parameter, enabling any custom ID generation logic.
 
 ## Performance
 
@@ -63,40 +64,68 @@ See [Baubit.Caching.LiteDB.Benchmark/Results.md](Baubit.Caching.LiteDB.Benchmark
 
 ## Usage
 
-### Store with Custom ID Types
+### Store with Default ID Generation
 
 ```csharp
 using Baubit.Caching.LiteDB;
 using Microsoft.Extensions.Logging;
 
-// Store with long IDs - recommended for best performance
+// Store with long IDs - sequential generation (1, 2, 3...)
 var storeLong = new StoreLong<string>(
     "cache.db",
     "myCollection",
     loggerFactory);
 
-storeLong.Add(1L, "value", out var entry);
+storeLong.Add("value", out var entry);  // Auto-generated ID: 1
 storeLong.GetValueOrDefault(1L, out var value);
 
-// Store with int IDs
+// Store with int IDs - sequential generation
 var storeInt = new StoreInt<string>(
     "cache.db",
     "intCollection",
     loggerFactory);
 
-storeInt.Add(42, "value", out var entry);
+storeInt.Add("value", out var entry);  // Auto-generated ID: 1
 
-// Store with Guid IDs - uses automatic GuidV7 generation
+// Store with Guid IDs - automatic GuidV7 generation
 var storeGuid = new StoreGuid<string>(
     "cache.db",
     "guidCollection",
     loggerFactory);
 
-// Auto-generated ID
-storeGuid.Add("value", out var entry1);
+storeGuid.Add("value", out var entry);  // Auto-generated GuidV7
+```
 
-// Or provide explicit Guid
-storeGuid.Add(Guid.NewGuid(), "value", out var entry2);
+### Store with Custom ID Generation
+
+```csharp
+using Baubit.Caching.LiteDB;
+using Microsoft.Extensions.Logging;
+
+// Custom long ID generation - start from 1000, increment by 10
+var storeLong = new StoreLong<string>(
+    "cache.db",
+    "customCollection",
+    lastId => lastId.HasValue ? lastId.Value + 10 : 1000,
+    loggerFactory);
+
+storeLong.Add("value", out var entry);  // ID: 1000
+storeLong.Add("value2", out var entry2); // ID: 1010
+
+// Custom Guid ID generation with custom identity generator
+var customGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+var storeGuid = new StoreGuid<string>(
+    "cache.db",
+    "guidCollection",
+    customGenerator,
+    loggerFactory);
+
+// Direct use of Store<TId, TValue> with fully custom ID type and factory
+var customStore = new Store<long, string>(
+    "cache.db",
+    "fullCustom",
+    lastId => lastId.HasValue ? lastId.Value * 2 : 1,
+    loggerFactory);
 ```
 
 ### Resumable Enumeration
@@ -145,24 +174,26 @@ await enumerator2.MoveNextAsync();  // Continues from third entry
 using Baubit.Caching.LiteDB;
 using Microsoft.Extensions.Logging;
 
-// Uncapped store with automatic Guid generation
+// Uncapped store with default Guid generation
 var store = new StoreGuid<string>(
     "cache.db",
     "myCollection",
     loggerFactory);
 
-// Capped store
+// Capped store with custom ID factory
 var cappedStore = new StoreGuid<string>(
     "cache.db",
     "myCollection",
     minCap: 100,
     maxCap: 1000,
+    Baubit.Identity.IdentityGenerator.CreateNew(),
     loggerFactory);
 
-// Store with custom ID type - long
+// Store with custom ID type and custom next ID factory
 var longStore = new StoreLong<string>(
     "cache.db",
     "longCollection",
+    lastId => lastId.HasValue ? lastId.Value + 5 : 100,
     loggerFactory);
 
 // Use with existing LiteDatabase instance
@@ -173,18 +204,22 @@ var sharedStore = new StoreGuid<string>(db, "myCollection", loggerFactory);
 ### Basic Store Operations
 
 ```csharp
-// Store with long IDs - explicit ID required
+// Store with long IDs - auto-generates sequential IDs
 var storeLong = new StoreLong<string>("cache.db", "col", loggerFactory);
-storeLong.Add(1L, "value", out var entry);
-storeLong.GetValueOrDefault(1L, out var value);
-storeLong.Update(1L, "new value");
-storeLong.Remove(1L, out var removed);
+storeLong.Add("value", out var entry);  // Auto-generated ID
+storeLong.GetValueOrDefault(entry.Id, out var value);
+storeLong.Update(entry.Id, "new value");
+storeLong.Remove(entry.Id, out var removed);
 storeLong.GetCount(out var count);
 
-// Store with Guid IDs - auto-generates IDs
+// Store with Guid IDs - auto-generates GuidV7 IDs
 var storeGuid = new StoreGuid<string>("cache.db", "guidCol", loggerFactory);
 storeGuid.Add("value", out var entryGuid);  // ID auto-generated
 storeGuid.GetCount(out var countGuid);
+
+// Explicit ID still supported
+storeLong.Add(999L, "explicit", out var explicitEntry);
+storeGuid.Add(Guid.NewGuid(), "explicit", out var explicitGuidEntry);
 ```
 
 ## License
