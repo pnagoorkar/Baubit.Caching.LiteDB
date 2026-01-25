@@ -133,13 +133,11 @@ var customStore = new Store<long, string>(
 Enumeration sessions can be persisted to LiteDB and resumed after application restarts:
 
 ```csharp
+using Baubit.Caching;
+using Baubit.Caching.InMemory;
 using Baubit.Caching.LiteDB;
 using LiteDB;
 using Microsoft.Extensions.Logging;
-
-// Create database shared between store and enumerator factory
-using var database = new LiteDatabase("cache.db");
-var store = new StoreGuid<string>(database, "myCollection", loggerFactory);
 
 // Configure resumable enumeration
 var config = new Baubit.Caching.LiteDB.Configuration
@@ -149,24 +147,77 @@ var config = new Baubit.Caching.LiteDB.Configuration
     PersistPositionBeforeMove = true  // Persist before move (crash recovery)
 };
 
-var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
-var cache = new OrderedCache<Guid, string>(store, factory, loggerFactory);
+// Create database shared between store and enumerator factory
+using var database = new LiteDatabase("cache.db");
+var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
+
+// Create store and metadata
+var store = new StoreGuid<string>(database, "myCollection", identityGenerator, loggerFactory);
+var metadata = new Metadata<Guid>(config, loggerFactory);
+
+// Create enumerator factory with same database and configuration
+var enumeratorFactory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
+
+// Create cache with enumerator factory
+var cache = new OrderedCache<Guid, string>(
+    config,
+    l1Store: null,  // Optional L1 cache
+    l2Store: store,
+    metadata: metadata,
+    loggerFactory: loggerFactory,
+    enumeratorCollectionFactory: null,  // Optional custom collection factory
+    enumeratorFactory: enumeratorFactory);
 
 // First enumeration session
-var enumerator = factory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
+var enumerator = enumeratorFactory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
 await enumerator.MoveNextAsync();  // First entry
 await enumerator.MoveNextAsync();  // Second entry
 await enumerator.DisposeAsync();   // Position persisted
 
 // Resume from saved position (even after application restart)
-var enumerator2 = factory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
+var enumerator2 = enumeratorFactory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
 await enumerator2.MoveNextAsync();  // Continues from third entry
 ```
 
 **Configuration Options:**
-- `ResumeSession` - Enable/disable session resumption (default: false)
-- `PersistPositionEveryXMoves` - Persist every X moves, 0 to disable (default: 0)
-- `PersistPositionBeforeMove` - Persist before move for crash recovery, false for after move (default: true)
+- `ResumeSession` - Enable/disable session resumption (default: `false`)
+- `PersistPositionEveryXMoves` - Persist every X moves, 0 to disable (default: `0`)
+- `PersistPositionBeforeMove` - Persist before move for crash recovery, false for after move (default: `true`)
+
+**How It Works:**
+- Enumerator positions are persisted to a `_enumerator_positions` collection in the same LiteDB database
+- Each enumeration session is identified by a unique session ID string
+- When `ResumeSession` is enabled, the factory checks for saved positions and resumes from there
+- Persistence frequency is controlled by `PersistPositionEveryXMoves` to balance reliability vs. I/O overhead
+- `PersistPositionBeforeMove` determines whether position is saved before or after moving to the next entry
+
+**Eviction Protection:**
+- When `ResumeSession` is enabled, the cache eviction respects both active and persisted enumerator positions
+- Entries will not be evicted if any enumerator (active or persisted) is still positioned at or before them
+- This ensures safe resumption even if the application restarts while enumeration is in progress
+- Disable `ResumeSession` if you want eviction to only consider active in-memory enumerators
+
+**Future Enumeration:**
+
+For scenarios where you want to wait for new entries to be added to the cache:
+
+```csharp
+// Create a future enumerator that starts from the end of the cache
+var futureEnumerator = enumeratorFactory.CreateFutureEnumerator(
+    cache, 
+    _ => {}, 
+    "future-session", 
+    CancellationToken.None);
+
+// This waits for new entries to be added
+while (await futureEnumerator.MoveNextAsync())
+{
+    // Process newly added entries
+    Console.WriteLine($"New entry: {futureEnumerator.Current.Value}");
+}
+```
+
+Future enumerators also support session resumption when `ResumeSession` is enabled.
 
 ### Creating the Store
 
