@@ -10,13 +10,14 @@ namespace Baubit.Caching.LiteDB
     /// </summary>
     /// <typeparam name="TId">The type of the unique identifier. Must be a value type that implements IComparable and IEquatable.</typeparam>
     /// <typeparam name="TValue">The type of value stored in the cache.</typeparam>
-    public abstract class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
+    public class Store<TId, TValue> : Baubit.Caching.Store<TId, TValue>
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
-        private readonly LiteDatabase _database;
-        private readonly ILiteCollection<Entry<TId, TValue>> _collection;
-        private readonly ILogger<Store<TId, TValue>> _logger;
-        private readonly bool _ownsDatabase;
+        private readonly LiteDatabase database;
+        private readonly ILiteCollection<Entry<TId, TValue>> collection;
+        private readonly ILogger<Store<TId, TValue>> logger;
+        private readonly bool ownsDatabase;
+        private readonly Func<TId?, TId?> nextIdFactory;
         private TId? lastGeneratedId;
 
         /// <summary>
@@ -36,24 +37,27 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(string databasePath,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
+            this.logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
+            this.nextIdFactory = nextIdFactory ?? throw new ArgumentNullException(nameof(nextIdFactory));
 
-            _database = new LiteDatabase(new ConnectionString
+            this.database = new LiteDatabase(new ConnectionString
             {
                 Filename = databasePath,
                 Upgrade = true
             });
-            _ownsDatabase = true;
-            _collection = _database.GetCollection<Entry<TId, TValue>>(collectionName);
-            _collection.EnsureIndex(x => x.Id, unique: true);
+            this.ownsDatabase = true;
+            this.collection = database.GetCollection<Entry<TId, TValue>>(collectionName);
+            collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
 
@@ -62,11 +66,13 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="databasePath">Path to the LiteDB database file.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(string databasePath,
                      string collectionName,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
-            : this(databasePath, collectionName, null, null, loggerFactory)
+            : this(databasePath, collectionName, null, null, nextIdFactory, loggerFactory)
         {
         }
 
@@ -77,19 +83,22 @@ namespace Baubit.Caching.LiteDB
         /// <param name="collectionName">Name of the collection to use for storage.</param>
         /// <param name="minCap">Minimum capacity (null for uncapped).</param>
         /// <param name="maxCap">Maximum capacity (null for uncapped).</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(LiteDatabase database,
                      string collectionName,
                      long? minCap,
                      long? maxCap,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
             : base(minCap, maxCap, loggerFactory)
         {
-            _logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
-            _database = database ?? throw new ArgumentNullException(nameof(database));
-            _ownsDatabase = false;
-            _collection = _database.GetCollection<Entry<TId, TValue>>(collectionName);
-            _collection.EnsureIndex(x => x.Id, unique: true);
+            this.logger = loggerFactory.CreateLogger<Store<TId, TValue>>();
+            this.database = database ?? throw new ArgumentNullException(nameof(database));
+            this.nextIdFactory = nextIdFactory ?? throw new ArgumentNullException(nameof(nextIdFactory));
+            this.ownsDatabase = false;
+            this.collection = database.GetCollection<Entry<TId, TValue>>(collectionName);
+            collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
 
@@ -98,18 +107,20 @@ namespace Baubit.Caching.LiteDB
         /// </summary>
         /// <param name="database">Existing LiteDB database instance.</param>
         /// <param name="collectionName">Name of the collection to use for storage.</param>
+        /// <param name="nextIdFactory">Function to generate the next ID. Takes the last generated ID and returns the next ID.</param>
         /// <param name="loggerFactory">Logger factory for creating loggers.</param>
         public Store(LiteDatabase database,
                      string collectionName,
+                     Func<TId?, TId?> nextIdFactory,
                      ILoggerFactory loggerFactory)
-            : this(database, collectionName, null, null, loggerFactory)
+            : this(database, collectionName, null, null, nextIdFactory, loggerFactory)
         {
         }
 
         private void InitializeHeadTail()
         {
-            var head = _collection.Query().OrderBy(x => x.Id).FirstOrDefault();
-            var tail = _collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
+            var head = collection.Query().OrderBy(x => x.Id).FirstOrDefault();
+            var tail = collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
             
             // Initialize lastGeneratedId from the tail (most recent) entry
             if (tail != null)
@@ -130,7 +141,7 @@ namespace Baubit.Caching.LiteDB
 
             try
             {
-                _collection.Insert(liteEntry);
+                collection.Insert(liteEntry);
                 LastAddedId = entry.Id;
             }
             catch (LiteException ex) when (ex.ErrorCode == LiteException.INDEX_DUPLICATE_KEY)
@@ -151,7 +162,7 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Add(TValue value, out IEntry<TId, TValue> entry)
         {
-            var nextId = GenerateNextId(lastGeneratedId);
+            var nextId = nextIdFactory(lastGeneratedId);
             if (nextId == null)
             {
                 entry = default;
@@ -160,12 +171,11 @@ namespace Baubit.Caching.LiteDB
             lastGeneratedId = nextId;
             return Add(nextId.Value, value, out entry);
         }
-        protected abstract TId? GenerateNextId(TId? lastGeneratedId);
 
         /// <inheritdoc />
         public override bool GetCount(out long count)
         {
-            count = _collection.Count();
+            count = collection.Count();
             return true;
         }
 
@@ -175,7 +185,7 @@ namespace Baubit.Caching.LiteDB
             entry = null;
             if (!id.HasValue) return false;
 
-            entry = _collection.FindById(new BsonValue(id.Value));
+            entry = collection.FindById(new BsonValue(id.Value));
 
             return true;
         }
@@ -205,14 +215,14 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Remove(TId id, out IEntry<TId, TValue> entry)
         {
-            var found = _collection.FindById(new BsonValue(id));
+            var found = collection.FindById(new BsonValue(id));
             if (found == null)
             {
                 entry = null;
                 return false;
             }
 
-            _collection.Delete(new BsonValue(id));
+            collection.Delete(new BsonValue(id));
             entry = found;
             return true;
         }
@@ -220,29 +230,29 @@ namespace Baubit.Caching.LiteDB
         /// <inheritdoc />
         public override bool Update(IEntry<TId, TValue> entry)
         {
-            var existing = _collection.FindById(new BsonValue(entry.Id));
+            var existing = collection.FindById(new BsonValue(entry.Id));
             if (existing == null) return false;
 
             existing.Value = entry.Value;
-            return _collection.Update(existing);
+            return collection.Update(existing);
         }
 
         /// <inheritdoc />
         public override bool Update(TId id, TValue value)
         {
-            var existing = _collection.FindById(new BsonValue(id));
+            var existing = collection.FindById(new BsonValue(id));
             if (existing == null) return false;
 
             existing.Value = value;
-            return _collection.Update(existing);
+            return collection.Update(existing);
         }
 
         /// <inheritdoc />
         protected override void DisposeInternal()
         {
-            if (_ownsDatabase)
+            if (ownsDatabase)
             {
-                _database?.Dispose();
+                database?.Dispose();
             }
         }
     }

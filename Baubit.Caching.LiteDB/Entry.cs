@@ -14,6 +14,7 @@ namespace Baubit.Caching.LiteDB
         /// <summary>
         /// Gets or sets the unique identifier for this entry.
         /// </summary>
+        [BsonId]
         public TId Id { get; set; }
 
         /// <summary>
