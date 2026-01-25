@@ -14,32 +14,32 @@ namespace Baubit.Caching.LiteDB
     public abstract class BaseCacheAsyncEnumerator<TId, TValue> : Baubit.Caching.BaseCacheAsyncEnumerator<TId, TValue>
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
-        private readonly ILiteCollection<EnumeratorPosition<TId>> _positionCollection;
-        private readonly Configuration _configuration;
-        private readonly string _id;
-        private readonly Func<DateTime> _utcNow;
-        private int _movesSinceLastPersist;
+        private readonly ILiteCollection<EnumeratorPosition<TId>> positionCollection;
+        private readonly Configuration configuration;
+        private readonly string id;
+        private readonly Func<DateTime> utcNow;
+        private int movesSinceLastPersist;
 
         /// <summary>
         /// Gets whether persistence is enabled (PersistPositionEveryXMoves > 0).
         /// </summary>
-        private bool IsPersistenceEnabled => _configuration.PersistPositionEveryXMoves > 0;
+        private bool IsPersistenceEnabled => configuration.PersistPositionEveryXMoves > 0;
 
         /// <summary>
         /// Gets whether it's time to persist based on move count.
         /// Includes guard for when persistence is disabled to avoid division by zero.
         /// </summary>
-        private bool ShouldPersist => IsPersistenceEnabled && _movesSinceLastPersist >= _configuration.PersistPositionEveryXMoves;
+        private bool ShouldPersist => IsPersistenceEnabled && movesSinceLastPersist >= configuration.PersistPositionEveryXMoves;
 
         /// <summary>
         /// Gets whether to persist before the move operation.
         /// </summary>
-        private bool ShouldPersistBefore => IsPersistenceEnabled && _configuration.PersistPositionBeforeMove && ShouldPersist;
+        private bool ShouldPersistBefore => IsPersistenceEnabled && configuration.PersistPositionBeforeMove && ShouldPersist;
 
         /// <summary>
         /// Gets whether to persist after the move operation.
         /// </summary>
-        private bool ShouldPersistAfter => IsPersistenceEnabled && !_configuration.PersistPositionBeforeMove && ShouldPersist;
+        private bool ShouldPersistAfter => IsPersistenceEnabled && !configuration.PersistPositionBeforeMove && ShouldPersist;
 
         /// <summary>
         /// Creates a new base cache async enumerator with position persistence.
@@ -61,11 +61,11 @@ namespace Baubit.Caching.LiteDB
             Func<DateTime> utcNow = null)
             : base(cache, onDispose, id, cancellationToken)
         {
-            _positionCollection = positionCollection ?? throw new ArgumentNullException(nameof(positionCollection));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _id = id;
-            _utcNow = utcNow ?? (() => DateTime.UtcNow);
-            _movesSinceLastPersist = 0;
+            this.positionCollection = positionCollection ?? throw new ArgumentNullException(nameof(positionCollection));
+            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            this.id = id;
+            this.utcNow = utcNow ?? (() => DateTime.UtcNow);
+            this.movesSinceLastPersist = 0;
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace Baubit.Caching.LiteDB
 
             var result = await base.MoveNextAsync().ConfigureAwait(false);
 
-            if (result && IsPersistenceEnabled) _movesSinceLastPersist++;
+            if (result && IsPersistenceEnabled) movesSinceLastPersist++;
 
             if (result && ShouldPersistAfter) PersistPosition();
 
@@ -92,11 +92,11 @@ namespace Baubit.Caching.LiteDB
         {
             if (Current != null)
             {
-                var position = new EnumeratorPosition<TId>(_id, Current.Id, _utcNow());
+                var position = new EnumeratorPosition<TId>(id, Current.Id, utcNow());
 
                 // Upsert: Insert if doesn't exist, update if exists
-                _positionCollection.Upsert(position);
-                _movesSinceLastPersist = 0;
+                positionCollection.Upsert(position);
+                movesSinceLastPersist = 0;
             }
         }
 

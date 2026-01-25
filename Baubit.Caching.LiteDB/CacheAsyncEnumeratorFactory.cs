@@ -15,9 +15,8 @@ namespace Baubit.Caching.LiteDB
     public class CacheAsyncEnumeratorFactory<TId, TValue> : ICacheAsyncEnumeratorFactory<TId, TValue>
         where TId : struct, IComparable<TId>, IEquatable<TId>
     {
-        private readonly Configuration _configuration;
-        private readonly ILiteCollection<EnumeratorPosition<TId>> _positionCollection;
-        private const string PositionCollectionName = "_enumerator_positions";
+        private readonly Configuration configuration;
+        private readonly ILiteCollection<EnumeratorPosition<TId>> positionCollection;
 
         /// <summary>
         /// Creates a new cache async enumerator factory with the specified LiteDB database.
@@ -30,8 +29,8 @@ namespace Baubit.Caching.LiteDB
             if (database == null)
                 throw new ArgumentNullException(nameof(database));
             
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _positionCollection = database.GetCollection<EnumeratorPosition<TId>>(PositionCollectionName);
+            this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            this.positionCollection = database.GetCollection<EnumeratorPosition<TId>>(Configuration.PositionCollectionName);
             // SessionId is marked with BsonId attribute, so no need for explicit index
         }
 
@@ -42,9 +41,9 @@ namespace Baubit.Caching.LiteDB
         /// <returns>Saved position or null if not found or ResumeSession is disabled.</returns>
         private TId? GetSavedStartPosition(string id)
         {
-            if (_configuration.ResumeSession && !string.IsNullOrEmpty(id))
+            if (configuration.ResumeSession && !string.IsNullOrEmpty(id))
             {
-                var savedPosition = _positionCollection.FindById(id);
+                var savedPosition = positionCollection.FindById(id);
                 if (savedPosition != null)
                 {
                     return savedPosition.CurrentId;
@@ -71,7 +70,7 @@ namespace Baubit.Caching.LiteDB
         {
             var startPosition = GetSavedStartPosition(id);
             return new CacheAsyncEnumerator<TId, TValue>(
-                cache, onDispose, id, cancellationToken, _positionCollection, _configuration, startPosition);
+                cache, onDispose, id, cancellationToken, positionCollection, configuration, startPosition);
         }
 
         /// <summary>
@@ -92,7 +91,7 @@ namespace Baubit.Caching.LiteDB
         {
             var startPosition = GetSavedStartPosition(id);
             return new CacheFutureAsyncEnumerator<TId, TValue>(
-                cache, onDispose, id, cancellationToken, _positionCollection, _configuration, startPosition);
+                cache, onDispose, id, cancellationToken, positionCollection, configuration, startPosition);
         }
     }
 }
