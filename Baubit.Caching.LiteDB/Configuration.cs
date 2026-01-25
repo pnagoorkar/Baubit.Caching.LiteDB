@@ -6,6 +6,7 @@ namespace Baubit.Caching.LiteDB
     /// </summary>
     public class Configuration : Baubit.Caching.Configuration
     {
+        public const string PositionCollectionName = "_enumerator_positions";
         /// <summary>
         /// Gets or sets a value indicating whether to resume enumeration sessions from persisted state.
         /// When true, async enumerators will check LiteDB for saved positions and resume from there.

@@ -17,7 +17,6 @@ namespace Baubit.Caching.LiteDB
     {
         private readonly Configuration configuration;
         private readonly ILiteCollection<EnumeratorPosition<TId>> positionCollection;
-        private const string PositionCollectionName = "_enumerator_positions";
 
         /// <summary>
         /// Creates a new cache async enumerator factory with the specified LiteDB database.
@@ -31,7 +30,7 @@ namespace Baubit.Caching.LiteDB
                 throw new ArgumentNullException(nameof(database));
             
             this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            this.positionCollection = database.GetCollection<EnumeratorPosition<TId>>(PositionCollectionName);
+            this.positionCollection = database.GetCollection<EnumeratorPosition<TId>>(Configuration.PositionCollectionName);
             // SessionId is marked with BsonId attribute, so no need for explicit index
         }
 
