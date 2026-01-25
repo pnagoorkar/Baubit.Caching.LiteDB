@@ -1,10 +1,18 @@
 <Project>
   
+  <!-- Import the root Directory.Packages.props if it exists (for monorepo builds) -->
+  <!-- When building standalone, this import is skipped gracefully -->
+  <PropertyGroup>
+    <ParentPackagesPropsPath>$([MSBuild]::GetPathOfFileAbove('Directory.Packages.props', '$(MSBuildThisFileDirectory)../'))</ParentPackagesPropsPath>
+  </PropertyGroup>
+  <Import Project="$(ParentPackagesPropsPath)" Condition="'$(ParentPackagesPropsPath)' != ''" />
+  
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Define package versions only when parent doesn't exist (standalone builds) -->
+  <ItemGroup Condition="'$(ParentPackagesPropsPath)' == ''">
     <!-- Production Dependencies -->
     <PackageVersion Include="Baubit.Caching" Version="2026.2.2-prerelease"/>
     <PackageVersion Include="LiteDB" Version="5.0.21" />
@@ -16,7 +24,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
 
     <!-- Benchmark Dependencies -->
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.6" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
   </ItemGroup>
 
 </Project>
