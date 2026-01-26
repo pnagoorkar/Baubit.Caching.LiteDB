@@ -128,6 +128,24 @@ var customStore = new Store<long, string>(
     loggerFactory);
 ```
 
+**Future Enumeration:**
+
+For scenarios where you want to wait for new entries to be added to the cache:
+
+```csharp
+// Create a future enumerator that starts from the end of the cache
+var futureEnumerator = cache.GetFutureAsyncEnumerator("future-session", CancellationToken.None);
+
+// This waits for new entries to be added
+while (await futureEnumerator.MoveNextAsync())
+{
+    // Process newly added entries
+    Console.WriteLine($"New entry: {futureEnumerator.Current.Value}");
+}
+```
+
+Future enumerators also support session resumption when `ResumeSession` is enabled.
+
 ### Resumable Enumeration
 
 Enumeration sessions can be persisted to LiteDB and resumed after application restarts:
@@ -169,14 +187,14 @@ var cache = new OrderedCache<Guid, string>(
     enumeratorFactory: enumeratorFactory);
 
 // First enumeration session
-var enumerator = enumeratorFactory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
+var enumerator = cache.GetFutureAsyncEnumerator("my-session", CancellationToken.None);
 await enumerator.MoveNextAsync();  // First entry
 await enumerator.MoveNextAsync();  // Second entry
-await enumerator.DisposeAsync();   // Position persisted
+cache.Dispose();   // Position persisted
 
 // Resume from saved position (even after application restart)
-var enumerator2 = enumeratorFactory.CreateEnumerator(cache, _ => {}, "my-session", CancellationToken.None);
-await enumerator2.MoveNextAsync();  // Continues from third entry
+var enumerator = cache.GetFutureAsyncEnumerator("my-session", CancellationToken.None);
+await enumerator.MoveNextAsync();  // Continues from third entry
 ```
 
 **Configuration Options:**
@@ -196,28 +214,6 @@ await enumerator2.MoveNextAsync();  // Continues from third entry
 - Entries will not be evicted if any enumerator (active or persisted) is still positioned at or before them
 - This ensures safe resumption even if the application restarts while enumeration is in progress
 - Disable `ResumeSession` if you want eviction to only consider active in-memory enumerators
-
-**Future Enumeration:**
-
-For scenarios where you want to wait for new entries to be added to the cache:
-
-```csharp
-// Create a future enumerator that starts from the end of the cache
-var futureEnumerator = enumeratorFactory.CreateFutureEnumerator(
-    cache, 
-    _ => {}, 
-    "future-session", 
-    CancellationToken.None);
-
-// This waits for new entries to be added
-while (await futureEnumerator.MoveNextAsync())
-{
-    // Process newly added entries
-    Console.WriteLine($"New entry: {futureEnumerator.Current.Value}");
-}
-```
-
-Future enumerators also support session resumption when `ResumeSession` is enabled.
 
 ### Creating the Store
 
