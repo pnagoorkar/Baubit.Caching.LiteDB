@@ -27,7 +27,6 @@ dotnet add package Baubit.Caching.LiteDB
 - **Persistent Storage**: File-based LiteDB storage for durable caching
 - **Default ID Factories**: Built-in sequential generation for int/long, GuidV7 generation for Guid
 - **Resumable Enumeration**: Resume async enumeration sessions across application restarts with configurable persistence
-- **Thread-Safe**: All public APIs are thread-safe
 - **Capacity Management**: Support for bounded and unbounded stores
 
 ## Backward Compatibility
@@ -175,6 +174,8 @@ var metadata = new Metadata<Guid>(config, loggerFactory);
 
 // Create enumerator factory with same database and configuration
 var enumeratorFactory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
+Func<Baubit.Caching.CacheEnumeratorCollection<Guid>> enumCollFactory =
+                () => new LiteDB.CacheEnumeratorCollection<Guid>(config, database);
 
 // Create cache with enumerator factory
 var cache = new OrderedCache<Guid, string>(
@@ -183,7 +184,7 @@ var cache = new OrderedCache<Guid, string>(
     l2Store: store,
     metadata: metadata,
     loggerFactory: loggerFactory,
-    enumeratorCollectionFactory: null,  // Optional custom collection factory
+    enumeratorCollectionFactory: enumCollFactory, // required if ResumeSession = true; null ok otherwise
     enumeratorFactory: enumeratorFactory);
 
 // First enumeration session
