@@ -57,7 +57,6 @@ namespace Baubit.Caching.LiteDB
             });
             this.ownsDatabase = true;
             this.collection = database.GetCollection<Entry<TId, TValue>>(collectionName);
-            collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
 
@@ -98,7 +97,6 @@ namespace Baubit.Caching.LiteDB
             this.nextIdFactory = nextIdFactory ?? throw new ArgumentNullException(nameof(nextIdFactory));
             this.ownsDatabase = false;
             this.collection = database.GetCollection<Entry<TId, TValue>>(collectionName);
-            collection.EnsureIndex(x => x.Id, unique: true);
             InitializeHeadTail();
         }
 
@@ -121,7 +119,7 @@ namespace Baubit.Caching.LiteDB
         {
             var head = collection.Query().OrderBy(x => x.Id).FirstOrDefault();
             var tail = collection.Query().OrderByDescending(x => x.Id).FirstOrDefault();
-            
+
             // Initialize lastGeneratedId from the tail (most recent) entry
             if (tail != null)
             {

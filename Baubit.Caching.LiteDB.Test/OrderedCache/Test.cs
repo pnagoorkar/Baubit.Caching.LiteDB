@@ -51,12 +51,12 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Use Store<TValue> which inherits from Store<Guid, TValue>
             var l2Store = new Baubit.Caching.LiteDB.StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
             // Create L1 store with Guid type and nextId factory
-            var l1Store = l1MinCap.HasValue 
+            var l1Store = l1MinCap.HasValue
                 ? new Caching.InMemory.Store<Guid, string>(
-                    l1MinCap, 
-                    l1MaxCap, 
-                    lastId => identityGenerator.GetNext(), 
-                    _loggerFactory) 
+                    l1MinCap,
+                    l1MaxCap,
+                    lastId => identityGenerator.GetNext(),
+                    _loggerFactory)
                 : null;
 
             // Create enumerator factory using the same database as the store
@@ -326,7 +326,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                         var idx = Interlocked.Increment(ref addIndex) - 1;
                         addResults[idx] = result;
                     }
-                });
+                }, TestContext.Current.CancellationToken);
             }
             await Task.WhenAll(tasks);
 
@@ -366,7 +366,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                         var result = cache.GetEntryOrDefault(entry.Id, out var retrieved);
                         readResults.Add(result && retrieved != null);
                     }
-                });
+                }, TestContext.Current.CancellationToken);
             }
             await Task.WhenAll(tasks);
 
@@ -408,13 +408,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration 
-            { 
+            var config = new Configuration
+            {
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
                 PersistPositionBeforeMove = false  // Persist AFTER move
             };
-            
+
             using var database = new LiteDatabase(dbPath);
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
@@ -423,18 +423,18 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("entry1", out _);
                 cache.Add("entry2", out _);
                 cache.Add("entry3", out _);
                 cache.Add("entry4", out _);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session1", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry1", enumerator.Current.Value);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry2", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -444,13 +444,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session1", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry3", enumerator.Current.Value);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry4", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -463,13 +463,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration 
-            { 
+            var config = new Configuration
+            {
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
                 PersistPositionBeforeMove = false  // Persist AFTER move
             };
-            
+
             using var database = new LiteDatabase(dbPath);
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
@@ -478,17 +478,17 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("entry1", out _);
                 cache.Add("entry2", out _);
-                
+
                 var enumerator = factory.CreateFutureEnumerator(cache, _ => { }, "session2", CancellationToken.None);
                 Assert.Equal("entry2", enumerator.Current.Value); // Initialized to last
-                
+
                 cache.Add("entry3", out _);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry3", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -498,13 +498,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var enumerator = factory.CreateFutureEnumerator(cache, _ => { }, "session2", CancellationToken.None);
-                
+
                 cache.Add("entry4", out _);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry4", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -517,12 +517,12 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration 
-            { 
+            var config = new Configuration
+            {
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 0  // Disabled
             };
-            
+
             using var database = new LiteDatabase(dbPath);
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
@@ -531,17 +531,17 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("entry1", out _);
                 cache.Add("entry2", out _);
                 cache.Add("entry3", out _);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session3", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry1", enumerator.Current.Value);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry2", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -551,11 +551,11 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session3", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry1", enumerator.Current.Value); // Starts from beginning since no persistence
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -568,13 +568,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration 
-            { 
+            var config = new Configuration
+            {
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
                 PersistPositionBeforeMove = true  // Persist BEFORE move
             };
-            
+
             using var database = new LiteDatabase(dbPath);
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
@@ -583,17 +583,17 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("entry1", out _);
                 cache.Add("entry2", out _);
                 cache.Add("entry3", out _);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session4", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry1", enumerator.Current.Value);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry2", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -603,11 +603,11 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var enumerator = factory.CreateEnumerator(cache, _ => { }, "session4", CancellationToken.None);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry3", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -620,13 +620,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Arrange
             var dbPath = GetTempDbPath();
             var identityGenerator = Baubit.Identity.IdentityGenerator.CreateNew();
-            var config = new Configuration 
-            { 
+            var config = new Configuration
+            {
                 ResumeSession = true,
                 PersistPositionEveryXMoves = 1,
                 PersistPositionBeforeMove = true  // Persist BEFORE move
             };
-            
+
             using var database = new LiteDatabase(dbPath);
             var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
             var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
@@ -635,17 +635,17 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("entry1", out _);
                 cache.Add("entry2", out _);
-                
+
                 var enumerator = factory.CreateFutureEnumerator(cache, _ => { }, "session5", CancellationToken.None);
                 Assert.Equal("entry2", enumerator.Current.Value);
-                
+
                 cache.Add("entry3", out _);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry3", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -655,13 +655,13 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             {
                 var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
                 var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var enumerator = factory.CreateFutureEnumerator(cache, _ => { }, "session5", CancellationToken.None);
-                
+
                 cache.Add("entry4", out _);
                 Assert.True(await enumerator.MoveNextAsync());
                 Assert.Equal("entry4", enumerator.Current.Value);
-                
+
                 await enumerator.DisposeAsync();
                 cache.Dispose();
                 store.Dispose();
@@ -683,7 +683,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("value1", out var entry1);
                 cache.Add("value2", out var entry2);
                 cache.Add("value3", out var entry3);
@@ -726,7 +726,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("value1", out var entry1);
                 cache.Add("value2", out var entry2);
                 savedIds = new List<Guid> { entry1.Id, entry2.Id };
@@ -763,7 +763,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("value1", out _);
                 cache.Add("value2", out _);
                 cache.Add("value3", out _);
@@ -799,7 +799,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("old1", out var entry1);
                 cache.Add("old2", out var entry2);
                 savedIds = new List<Guid> { entry1.Id, entry2.Id };
@@ -814,7 +814,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory, ids);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("new", out var newEntry);
 
                 // Assert - All entries should be accessible
@@ -843,7 +843,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("value1", out var entry1);
                 id1 = entry1.Id;
                 cache.Add("value2", out var entry2);
@@ -859,7 +859,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory, ids);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var removed = cache.Remove(id1, out _);
 
                 // Assert
@@ -887,7 +887,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("initial", out var entry);
                 id = entry.Id;
             }
@@ -901,7 +901,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory, ids);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 var updated = cache.Update(id, "updated");
 
                 // Assert
@@ -944,8 +944,8 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
             // Act & Assert
             using var database = new LiteDatabase(dbPath);
             var store = new StoreGuid<string>(database, "test", identityGenerator, _loggerFactory);
-            
-            Assert.Throws<ArgumentException>(() => 
+
+            Assert.Throws<ArgumentException>(() =>
                 new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory, duplicateIds));
         }
 
@@ -964,7 +964,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("existing", out _);
             }
 
@@ -999,7 +999,7 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
                 var metadata = new Baubit.Caching.InMemory.Metadata<Guid>(config, _loggerFactory);
                 var factory = new CacheAsyncEnumeratorFactory<Guid, string>(database, config);
                 using var cache = new Caching.OrderedCache<Guid, string>(config, null, store, metadata, _loggerFactory, null, factory);
-                
+
                 cache.Add("to remove", out var entry1);
                 removedId = entry1.Id;
                 cache.Add("to keep", out var entry2);
@@ -1027,4 +1027,3 @@ namespace Baubit.Caching.LiteDB.Test.OrderedCache
         }
     }
 }
-
